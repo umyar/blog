@@ -1,0 +1,51 @@
+---
+import '../styles/global.css';
+
+const {
+  title = 'umyar — blog',
+  description = 'Notes by Umiar Iusupov — in RU, EN, PT.',
+  lang = 'en',
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1a1a1a" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" />
+    <link
+      href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700&display=swap"
+      rel="stylesheet"
+    />
+    <slot name="head" />
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q7F14H0MW7"></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag('js', new Date());
+      gtag('config', 'G-Q7F14H0MW7');
+    </script>
+  </head>
+  <body>
+    <header class="container" style="padding-top:3rem;padding-bottom:1rem;">
+      <a href="/" style="text-decoration:none;">
+        <strong class="gradient-text" style="font-size:3rem;letter-spacing:-1px;">umyar</strong>
+      </a>
+    </header>
+    <main class="container">
+      <slot />
+    </main>
+    <footer class="container" style="margin:5rem auto;font-size:1.3rem;">
+      <a href="https://t.me/umyar">Telegram</a> · <a href="https://umyar.com">umyar.com</a>
+    </footer>
+  </body>
+</html>

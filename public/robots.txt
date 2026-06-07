@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://blog.umyar.com/sitemap-index.xml
