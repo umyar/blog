@@ -1,0 +1,53 @@
+---
+interface Props {
+  currentLang: string;
+  slug: string;
+  availableLangs: string[];
+}
+
+const { currentLang, slug, availableLangs } = Astro.props;
+
+const labels: Record<string, string> = { ru: 'RU', en: 'EN', pt: 'PT' };
+---
+
+<nav class="lang-switcher" aria-label="Language">
+  {
+    availableLangs.map((lang) => (
+      <a
+        href={`/posts/${lang}/${slug}`}
+        class:list={['lang-link', { active: lang === currentLang }]}
+        aria-current={lang === currentLang ? 'page' : undefined}
+      >
+        {labels[lang] ?? lang.toUpperCase()}
+      </a>
+    ))
+  }
+</nav>
+
+<style>
+  .lang-switcher {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+  }
+
+  .lang-link {
+    text-decoration: none;
+    color: #999;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    transition: color 0.15s;
+  }
+
+  .lang-link.active {
+    background-image: linear-gradient(to left, #dc2424, #4a569d);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .lang-link:not(.active):hover {
+    color: #333;
+  }
+</style>

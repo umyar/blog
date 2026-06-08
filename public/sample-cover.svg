@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+  <defs>
+    <linearGradient id="g" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0%" stop-color="#dc2424"/>
+      <stop offset="100%" stop-color="#4a569d"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="400" fill="url(#g)" rx="6"/>
+  <text x="400" y="210" font-family="Montserrat,sans-serif" font-size="32" font-weight="700" fill="white" text-anchor="middle" opacity="0.85">sample cover image</text>
+</svg>

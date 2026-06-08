@@ -1,0 +1,199 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import LanguageSwitcher from '../components/LanguageSwitcher.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  lang?: string;
+  slug?: string;
+  availableLangs?: string[];
+  date?: string;
+  cover?: string;
+}
+
+const {
+  title,
+  description,
+  lang = 'en',
+  slug = '',
+  availableLangs = [],
+  date,
+  cover,
+} = Astro.props;
+
+const formattedDate = date
+  ? new Date(date).toLocaleDateString(lang === 'ru' ? 'ru-RU' : lang === 'pt' ? 'pt-BR' : 'en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  : null;
+---
+
+<BaseLayout title={title} description={description} lang={lang}>
+  <article class="post">
+    <header class="post-header">
+      {
+        availableLangs.length > 1 && (
+          <LanguageSwitcher currentLang={lang} slug={slug} availableLangs={availableLangs} />
+        )
+      }
+      <h1 class="gradient-text post-title">{title}</h1>
+      {
+        formattedDate && (
+          <time class="post-date" datetime={date}>
+            {formattedDate}
+          </time>
+        )
+      }
+      {cover && <img class="post-cover" src={cover} alt="" />}
+    </header>
+
+    <slot name="audio" />
+
+    <div class="prose">
+      <slot />
+    </div>
+
+    <slot name="comments" />
+  </article>
+</BaseLayout>
+
+<style>
+  .post {
+    max-width: var(--maxline);
+    padding-bottom: 6rem;
+  }
+
+  .post-header {
+    margin: 4rem 0 2.5rem;
+  }
+
+  .post-title {
+    font-size: 3.6rem;
+    letter-spacing: -1px;
+    line-height: 1.15;
+    margin: 0.5rem 0;
+  }
+
+  .post-date {
+    display: block;
+    font-size: 1.3rem;
+    color: #666;
+    margin-top: 0.5rem;
+  }
+
+  .post-cover {
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+    margin-top: 2rem;
+  }
+
+  /* Prose — all content rendered from markdown/MDX */
+  .prose :global(p) {
+    margin: 1em 0;
+  }
+
+  .prose :global(h2) {
+    font-size: 2.4rem;
+    margin: 1.8em 0 0.5em;
+    line-height: 1.2;
+  }
+
+  .prose :global(h3) {
+    font-size: 2rem;
+    margin: 1.5em 0 0.4em;
+    line-height: 1.2;
+  }
+
+  .prose :global(h4) {
+    font-size: 1.8rem;
+    margin: 1.2em 0 0.3em;
+  }
+
+  .prose :global(a) {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .prose :global(a:hover) {
+    opacity: 0.7;
+  }
+
+  .prose :global(img) {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1.5em 0;
+    border-radius: 4px;
+  }
+
+  .prose :global(blockquote) {
+    border-left: 3px solid #1a1a1a;
+    padding-left: 1.5rem;
+    margin: 1.5em 0;
+    font-style: italic;
+    color: #444;
+  }
+
+  .prose :global(code) {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+    background: #f4f4f4;
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+  }
+
+  .prose :global(pre) {
+    background: #f4f4f4;
+    padding: 1.5rem;
+    overflow-x: auto;
+    border-radius: 6px;
+    margin: 1.5em 0;
+    font-size: 1.4rem;
+    line-height: 1.5;
+  }
+
+  .prose :global(pre code) {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  .prose :global(ul),
+  .prose :global(ol) {
+    padding-left: 1.8em;
+    margin: 1em 0;
+  }
+
+  .prose :global(li) {
+    margin: 0.4em 0;
+  }
+
+  .prose :global(hr) {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 2.5em 0;
+  }
+
+  .prose :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5em 0;
+    font-size: 1.5rem;
+  }
+
+  .prose :global(th),
+  .prose :global(td) {
+    border: 1px solid #ddd;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+
+  .prose :global(th) {
+    background: #f4f4f4;
+    font-weight: 700;
+  }
+</style>

@@ -1,0 +1,64 @@
+---
+import PostLayout from '../layouts/PostLayout.astro';
+---
+
+<PostLayout
+  title="Привет, мир — sample post"
+  description="A hard-coded sample to verify Phase 1 design: prose, language switcher, inline images."
+  lang="ru"
+  slug="hello-world"
+  availableLangs={['ru', 'pt']}
+  date="2025-06-08"
+  cover="/sample-cover.svg"
+>
+  <p>
+    Это пример абзаца. The article column is capped to ~50em so lines stay comfortable to read at
+    any viewport width. Body copy is 1.8rem with a 1.6 line-height.
+  </p>
+
+  <h2>A Section Heading</h2>
+
+  <p>Paragraph after an h2. Below is a blockquote — check the left-border and italic treatment:</p>
+
+  <blockquote>
+    <p>
+      "The most important thing is to make the reader comfortable. Typography is about invisible
+      service." — anonymous typographer
+    </p>
+  </blockquote>
+
+  <p>
+    Inline code looks like <code>npm run build</code>. A fenced code block follows:
+  </p>
+
+  <pre><code>site: https://blog.umyar.com
+output: static
+adapter: vercel</code></pre>
+
+  <h3>Inline Image</h3>
+
+  <p>The image below must be full-width-capped, responsive, and rounded:</p>
+
+  <img src="/sample-cover.svg" alt="Gradient sample cover" width="800" height="400" />
+
+  <h3>Lists</h3>
+
+  <ul>
+    <li>Montserrat 300 / 400 / 700</li>
+    <li>Red→blue gradient on headings</li>
+    <li>Black text on white background</li>
+  </ul>
+
+  <ol>
+    <li>Phase 0 — Scaffold ✓</li>
+    <li>Phase 1 — Design system ✓</li>
+    <li>Phase 2 — Content model (next)</li>
+  </ol>
+
+  <hr />
+
+  <p>
+    End of sample. The language switcher above should show <strong>RU</strong> (active, gradient) and
+    <strong>PT</strong> (inactive, grey). EN is absent.
+  </p>
+</PostLayout>
