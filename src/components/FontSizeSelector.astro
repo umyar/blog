@@ -1,0 +1,53 @@
+---
+const sizes = [14, 16, 18, 20] as const;
+---
+
+<div class="font-size-selector flex items-center gap-2 text-sm" role="group" aria-label="Text size">
+  <span class="mr-1 font-bold text-zinc-400 dark:text-zinc-500">Aa</span>
+  {
+    sizes.map((size) => (
+      <button
+        type="button"
+        class="size-btn rounded-md border border-zinc-200 px-2 py-0.5 text-xs text-zinc-500 transition hover:border-zinc-400 hover:text-zinc-800 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:text-zinc-200"
+        data-size={size}
+      >
+        {size}
+      </button>
+    ))
+  }
+</div>
+
+<script>
+  const STORAGE_KEY = 'blog-font-size';
+  const DEFAULT_SIZE = '18';
+
+  function applySize(size: string) {
+    document.documentElement.style.setProperty('--prose-font-size', `${size}px`);
+    document.querySelectorAll<HTMLElement>('.font-size-selector .size-btn').forEach((btn) => {
+      btn.classList.toggle('size-btn--active', btn.dataset.size === size);
+    });
+  }
+
+  const stored = localStorage.getItem(STORAGE_KEY) || DEFAULT_SIZE;
+  applySize(stored);
+
+  document.querySelectorAll<HTMLElement>('.font-size-selector .size-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const size = btn.dataset.size!;
+      localStorage.setItem(STORAGE_KEY, size);
+      applySize(size);
+    });
+  });
+</script>
+
+<style>
+  .size-btn--active {
+    border-color: transparent !important;
+    background-color: #18181b; /* zinc-900 */
+    color: #fff !important;
+  }
+  :global(.dark) .size-btn--active {
+    background-color: #fafafa; /* zinc-50 */
+    color: #18181b !important;
+  }
+</style>

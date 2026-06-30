@@ -43,6 +43,7 @@ npm i -D prettier prettier-plugin-astro
 Create/overwrite these exactly.
 
 **`astro.config.mjs`**
+
 ```js
 import { defineConfig } from 'astro/config';
 import vercel from '@astrojs/vercel';
@@ -58,11 +59,13 @@ export default defineConfig({
 ```
 
 **`.nvmrc`**
+
 ```
 24
 ```
 
 **`tsconfig.json`** — ensure it extends Astro strict (the scaffold likely already does):
+
 ```json
 {
   "extends": "astro/tsconfigs/strict",
@@ -72,6 +75,7 @@ export default defineConfig({
 ```
 
 **`.gitignore`**
+
 ```
 node_modules
 dist
@@ -85,6 +89,7 @@ dist
 ```
 
 **`prettier.config.js`** (mirrors the main umyar.com repo + Astro plugin)
+
 ```js
 module.exports = {
   trailingComma: 'es5',
@@ -99,6 +104,7 @@ module.exports = {
 ```
 
 **`.env.example`** (the full set the project will need; real values go in `.env` locally and in Vercel env vars — never commit `.env`)
+
 ```bash
 # Site
 PUBLIC_SITE_URL=https://blog.umyar.com
@@ -128,6 +134,7 @@ KEYSTATIC_SECRET=
 ```
 
 **`package.json`** — ensure these scripts exist:
+
 ```json
 {
   "scripts": {
@@ -155,6 +162,7 @@ public/                # favicon, robots.txt, static assets
 ```
 
 Add `public/favicon.ico` (reuse the one from the main site if available, else a placeholder) and a basic `public/robots.txt`:
+
 ```
 User-agent: *
 Allow: /
@@ -179,10 +187,16 @@ html {
   font-size: 100%;
 }
 @media (max-width: 1980px) {
-  html { font-size: 62.5%; }
+  html {
+    font-size: 62.5%;
+  }
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
 body {
   color: var(--text);
@@ -192,9 +206,15 @@ body {
   line-height: 1.6;
 }
 
-a { color: inherit; }
+a {
+  color: inherit;
+}
 
-img { max-width: 100%; height: auto; display: block; }
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
 
 /* Signature gradient text — use on h1/h2 / post titles */
 .gradient-text {
@@ -213,10 +233,20 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 /* Article prose column */
-.prose { max-width: var(--maxline); }
-.prose p { margin: 1em 0; }
-.prose h2, .prose h3 { margin: 1.5em 0 0.5em; }
-.prose img { margin: 1.5em 0; border-radius: 0.4rem; }
+.prose {
+  max-width: var(--maxline);
+}
+.prose p {
+  margin: 1em 0;
+}
+.prose h2,
+.prose h3 {
+  margin: 1.5em 0 0.5em;
+}
+.prose img {
+  margin: 1.5em 0;
+  border-radius: 0.4rem;
+}
 ```
 
 ## 6. Base layout — `src/layouts/BaseLayout.astro`
@@ -232,6 +262,7 @@ const {
 } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
 ---
+
 <!doctype html>
 <html lang={lang}>
   <head>
@@ -251,7 +282,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q7F14H0MW7"></script>
     <script is:inline>
       window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
+      function gtag() {
+        dataLayer.push(arguments);
+      }
       gtag('js', new Date());
       gtag('config', 'G-Q7F14H0MW7');
     </script>
@@ -283,10 +316,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 ---
+
 <BaseLayout title="umyar — blog" description="Notes by Umiar Iusupov — RU · EN · PT.">
-  <h1 class="gradient-text" style="font-size:4rem;letter-spacing:-2px;margin:4rem 0 1rem;">
-    blog
-  </h1>
+  <h1 class="gradient-text" style="font-size:4rem;letter-spacing:-2px;margin:4rem 0 1rem;">blog</h1>
   <p>Coming soon — posts in Russian, English and Portuguese.</p>
 </BaseLayout>
 ```

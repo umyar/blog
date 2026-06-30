@@ -1,29 +1,65 @@
 ---
 import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
 
 const {
   title = 'umyar — blog',
   description = 'Notes by Umiar Iusupov — in RU, EN, PT.',
   lang = 'en',
+  ogType = 'website',
+  ogImage,
 } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const ogImageUrl = ogImage ? new URL(ogImage, Astro.site).href : undefined;
+const ogLocale = { ru: 'ru_RU', en: 'en_US', pt: 'pt_BR' }[lang] ?? 'en_US';
 ---
 
 <!doctype html>
-<html lang={lang}>
+<html lang={lang} class="h-full antialiased">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="theme-color" content="#18181b" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <!-- Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:site_name" content="umyar — blog" />
+    {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
+    <!-- Twitter -->
+    <meta name="twitter:card" content={ogImageUrl ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {ogImageUrl && <meta name="twitter:image" content={ogImageUrl} />}
     <slot name="head" />
+    <!-- Theme init (before paint, avoids FOUC) -->
+    <script is:inline>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var dark =
+            stored === 'dark' ||
+            (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q7F14H0MW7"></script>
     <script is:inline>
@@ -35,17 +71,30 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
       gtag('config', 'G-Q7F14H0MW7');
     </script>
   </head>
-  <body>
-    <header class="container" style="padding-top:3rem;padding-bottom:1rem;">
-      <a href="/" style="text-decoration:none;">
-        <strong class="gradient-text" style="font-size:3rem;letter-spacing:-1px;">umyar</strong>
-      </a>
-    </header>
-    <main class="container">
-      <slot />
-    </main>
-    <footer class="container" style="margin:5rem auto;font-size:1.3rem;">
-      <a href="https://t.me/umyar">Telegram</a> · <a href="https://umyar.com">umyar.com</a>
-    </footer>
+  <body class="flex h-full flex-col">
+    <!-- Inset background panel (Spotlight signature) -->
+    <div class="fixed inset-0 flex justify-center sm:px-8">
+      <div class="flex w-full max-w-7xl lg:px-8">
+        <div class="w-full bg-white ring-1 ring-zinc-100 dark:bg-zinc-900 dark:ring-zinc-300/20"></div>
+      </div>
+    </div>
+
+    <div class="relative flex w-full flex-col">
+      <div class="mx-auto w-full max-w-7xl px-4 sm:px-8 lg:px-12">
+        <div class="mx-auto max-w-2xl lg:max-w-5xl">
+          <Header />
+        </div>
+      </div>
+
+      <main class="flex-auto">
+        <slot />
+      </main>
+
+      <div class="mx-auto w-full max-w-7xl px-4 sm:px-8 lg:px-12">
+        <div class="mx-auto max-w-2xl lg:max-w-5xl">
+          <Footer />
+        </div>
+      </div>
+    </div>
   </body>
 </html>

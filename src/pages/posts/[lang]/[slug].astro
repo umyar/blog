@@ -1,0 +1,100 @@
+---
+// R1 decision: Keystatic body fields use `fields.markdoc` (not `fields.mdx`). The Reader API's
+// mdx field only returns raw, uncompiled source text intended for Keystatic's React renderer,
+// which doesn't fit Astro's static-first pipeline. Markdoc gives a parsed AST we transform and
+// render to HTML directly at build time via @markdoc/markdoc — see src/lib/posts.ts.
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PostLayout from '../../../layouts/PostLayout.astro';
+import LanguageSwitcher from '../../../components/LanguageSwitcher.astro';
+import { getAllPosts, getPostLangs, renderPostBody, LANGS, type Lang } from '../../../lib/posts';
+
+export async function getStaticPaths() {
+  const posts = await getAllPosts();
+  const paths = [];
+  // Emit every (lang, slug) combo, even ones without a body, so missing
+  // translations render a graceful "not available" page instead of a 404.
+  for (const post of posts) {
+    for (const lang of LANGS) {
+      paths.push({ params: { lang, slug: post.slug } });
+    }
+  }
+  return paths;
+}
+
+const { lang, slug } = Astro.params as { lang: Lang; slug: string };
+const result = await renderPostBody(slug, lang);
+const availableLangs = await getPostLangs(slug);
+
+let title: string | undefined;
+let description: string | undefined;
+let coverUrl: string | undefined;
+let jsonLd: Record<string, unknown> | undefined;
+
+if (result) {
+  title = result.entry.title[lang] || result.entry.title.en;
+  description = result.entry.excerpt[lang] || result.entry.excerpt.en;
+  const cover = result.entry.cover;
+  coverUrl = cover && (cover.startsWith('http') || cover.startsWith('/')) ? cover : undefined;
+
+  jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: title,
+    inLanguage: lang,
+    datePublished: result.entry.date,
+    dateModified: result.entry.date,
+    author: { '@type': 'Person', name: 'Umiar Iusupov' },
+    ...(coverUrl ? { image: new URL(coverUrl, Astro.site).href } : {}),
+    mainEntityOfPage: new URL(Astro.url.pathname, Astro.site).href,
+  };
+}
+---
+
+{
+  result ? (
+    <PostLayout
+      title={title}
+      description={description}
+      lang={lang}
+      slug={slug}
+      availableLangs={availableLangs}
+      date={result.entry.date}
+      cover={coverUrl}
+      jsonLd={jsonLd}
+    >
+      <Fragment slot="head">
+        {availableLangs.map((altLang) => (
+          <link
+            rel="alternate"
+            hreflang={altLang}
+            href={new URL(`/posts/${altLang}/${slug}`, Astro.site).href}
+          />
+        ))}
+        {availableLangs.length > 0 && (
+          <link
+            rel="alternate"
+            hreflang="x-default"
+            href={new URL(`/posts/${availableLangs[0]}/${slug}`, Astro.site).href}
+          />
+        )}
+      </Fragment>
+      <Fragment set:html={result.html} />
+    </PostLayout>
+  ) : (
+    <BaseLayout title="Not available — umyar blog" lang={lang}>
+      <div class="mx-auto w-full max-w-7xl px-4 sm:px-8 lg:px-12">
+        <div class="mx-auto max-w-2xl py-24">
+          <h1 class="gradient-text text-3xl font-bold tracking-tight">
+            Not available in this language
+          </h1>
+          <p class="mt-4 text-base text-zinc-600 dark:text-zinc-400">
+            This post isn't translated yet. Try:
+          </p>
+          <div class="mt-4">
+            <LanguageSwitcher currentLang={lang} slug={slug} availableLangs={availableLangs} />
+          </div>
+        </div>
+      </div>
+    </BaseLayout>
+  )
+}

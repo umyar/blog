@@ -1,0 +1,40 @@
+---
+const year = new Date().getFullYear();
+
+const allLinks = [
+  { label: 'RSS', href: '/rss.xml' },
+  { label: 'Blog', href: '/' },
+  { label: 'About', href: 'https://umyar.com' },
+  { label: 'poupy.pt', href: 'https://poupy.pt' },
+  { label: 'Telegram', href: 'https://t.me/umiarxx' },
+  { label: 'LinkedIn', href: 'https://www.linkedin.com/in/umyar/' },
+  { label: 'Threads', href: 'https://www.threads.com/@umyarx' },
+  { label: 'X', href: 'https://x.com/umyarx' },
+  { label: 'Instagram', href: 'https://www.instagram.com/umyarx/' },
+  { label: 'Reddit', href: 'https://www.reddit.com/user/umyar_/' },
+  { label: 'YouTube', href: 'https://www.youtube.com/@umyarx' },
+];
+---
+
+<footer class="mt-24 border-t border-zinc-100 pt-10 pb-16 dark:border-zinc-700/40">
+  <div class="flex flex-col gap-8">
+    <!-- All links in one row -->
+    <div class="flex flex-wrap gap-6 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+      {allLinks.map((link) => (
+        <a
+          class="transition hover:gradient-text"
+          href={link.href}
+          target={link.href.startsWith('http') ? '_blank' : undefined}
+          rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+        >
+          {link.label}
+        </a>
+      ))}
+    </div>
+
+    <!-- Copyright centered -->
+    <p class="text-center text-sm text-zinc-400 dark:text-zinc-500">
+      © {year} Umiar Iusupov
+    </p>
+  </div>
+</footer>

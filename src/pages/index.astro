@@ -1,8 +1,107 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ArticleCard from '../components/ArticleCard.astro';
+import { getAllPosts, getPostLangs, type Lang } from '../lib/posts';
+
+const posts = await getAllPosts();
+const cards = [];
+for (const post of posts) {
+  const langs = await getPostLangs(post.slug);
+  if (langs.length === 0) continue;
+  const lang: Lang = langs.includes('en') ? 'en' : langs[0];
+  cards.push({
+    slug: post.slug,
+    lang,
+    title: post.entry.title[lang],
+    excerpt: post.entry.excerpt[lang],
+    date: post.entry.date,
+  });
+}
+cards.sort((a, b) => (a.date < b.date ? 1 : -1));
+
+const fmt = (date: string) =>
+  new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 ---
 
-<BaseLayout title="umyar — blog" description="Notes by Umiar Iusupov — RU · EN · PT.">
-  <h1 class="gradient-text" style="font-size:4rem;letter-spacing:-2px;margin:4rem 0 1rem;">blog</h1>
-  <p>Coming soon — posts in Russian, English and Portuguese.</p>
+<BaseLayout title="Umiar Iusupov - Blog." description="Notes by Umiar Iusupov — RU · EN · PT.">
+  <!-- Hero -->
+  <div class="mx-auto w-full max-w-7xl px-4 sm:px-8 lg:px-12">
+    <div class="mx-auto max-w-2xl lg:max-w-5xl">
+      <div class="mt-16 max-w-2xl sm:mt-24">
+        <h1
+          class="gradient-text text-4xl font-bold tracking-tight text-balance sm:text-5xl leading-[1.15]"
+        >
+          Writing on life, code, and moving countries.
+        </h1>
+        <p class="mt-6 text-base text-zinc-600 dark:text-zinc-400">
+          Notes by Umiar Iusupov — on software, building things, business, mental health, and
+          figuring out a new home in Portugal.
+        </p>
+        <div class="mt-6 flex gap-6">
+          <a
+            href="https://t.me/umyar"
+            aria-label="Telegram"
+            class="group -m-1 p-1"
+            target="_blank"
+            rel="noopener"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              class="h-6 w-6 fill-zinc-500 transition group-hover:fill-zinc-700 dark:fill-zinc-400 dark:group-hover:fill-zinc-300"
+            >
+              <path
+                d="M21.94 5.36 18.7 19.4c-.24 1.07-.88 1.34-1.78.83l-4.92-3.63-2.37 2.28c-.26.26-.48.48-.99.48l.35-5 9.1-8.22c.4-.35-.08-.55-.62-.2L5.21 13.5l-4.84-1.51c-1.05-.33-1.07-1.05.22-1.55L20.6 3.82c.88-.32 1.65.2 1.36 1.54Z"
+              ></path>
+            </svg>
+          </a>
+          <a
+            href="https://umyar.com"
+            aria-label="Website"
+            class="group -m-1 p-1"
+            target="_blank"
+            rel="noopener"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              class="h-6 w-6 fill-zinc-500 transition group-hover:fill-zinc-700 dark:fill-zinc-400 dark:group-hover:fill-zinc-300"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.93 6h-2.95a15.7 15.7 0 0 0-1.38-3.56A8.03 8.03 0 0 1 18.92 8ZM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96ZM4.26 14a7.96 7.96 0 0 1 0-4h3.38a16.6 16.6 0 0 0 0 4H4.26Zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56A8 8 0 0 1 5.08 16Zm2.95-8H5.08a8 8 0 0 1 4.33-3.56A15.7 15.7 0 0 0 8.03 8ZM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96ZM14.34 14H9.66a14.8 14.8 0 0 1 0-4h4.68a14.8 14.8 0 0 1 0 4Zm.27 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8 8 0 0 1-4.33 3.56ZM16.36 14a16.6 16.6 0 0 0 0-4h3.38a7.96 7.96 0 0 1 0 4h-3.38Z"
+                clip-rule="evenodd"></path>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Articles -->
+  <div class="mx-auto mt-16 w-full max-w-7xl px-4 sm:mt-24 sm:px-8 lg:px-12">
+    <div class="mx-auto max-w-2xl lg:max-w-5xl">
+      <div class="md:border-l md:border-zinc-100 md:pl-6 md:dark:border-zinc-700/40">
+        {
+          cards.length === 0 ? (
+            <p class="text-zinc-600 dark:text-zinc-400">
+              Coming soon — posts in Russian, English and Portuguese.
+            </p>
+          ) : (
+            <div class="flex max-w-3xl flex-col space-y-16">
+              {cards.map((card) => (
+                <ArticleCard
+                  href={`/posts/${card.lang}/${card.slug}`}
+                  title={card.title}
+                  date={card.date}
+                  formattedDate={fmt(card.date)}
+                  excerpt={card.excerpt}
+                />
+              ))}
+            </div>
+          )
+        }
+      </div>
+    </div>
+  </div>
 </BaseLayout>

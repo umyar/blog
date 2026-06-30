@@ -1,73 +1,33 @@
-/* Montserrat is loaded via <link> in BaseLayout */
-:root {
-  --text: #000;
-  --bg: #fff;
-  --theme: #1a1a1a;
-  --grad: linear-gradient(to left, #dc2424, #4a569d);
-  --maxline: 50em;
+@import 'tailwindcss';
+@plugin "@tailwindcss/typography";
+
+/* Class-based dark mode: <html class="dark"> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+
+  /* Signature gradient — kept as the brand accent */
+  --color-grad-from: #4a569d;
+  --color-grad-to: #dc2424;
 }
 
+/* Smooth color transitions on theme toggle */
 html {
-  font-size: 100%;
-}
-@media (max-width: 1980px) {
-  html {
-    font-size: 62.5%;
-  }
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+  scroll-behavior: smooth;
 }
 
 body {
-  color: var(--text);
-  background: var(--bg);
-  font-family: 'Montserrat', sans-serif;
-  font-size: 1.8rem;
-  line-height: 1.6;
+  @apply bg-zinc-50 text-zinc-600 antialiased dark:bg-black dark:text-zinc-400;
 }
 
-a {
-  color: inherit;
-}
-
-img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
-
-/* Signature gradient text — use on h1/h2 / post titles */
-.gradient-text {
-  background-image: var(--grad);
+/* Signature gradient text — a real utility, so variants like hover:/dark: work
+   and other utilities (display, etc.) sort against it normally. */
+@utility gradient-text {
+  background-image: linear-gradient(to left, var(--color-grad-to), var(--color-grad-from));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  display: inline-block;
-}
-
-.container {
-  width: 100%;
-  max-width: 80rem;
-  margin: 0 auto;
-  padding: 0 3rem;
-}
-
-/* Article prose column */
-.prose {
-  max-width: var(--maxline);
-}
-.prose p {
-  margin: 1em 0;
-}
-.prose h2,
-.prose h3 {
-  margin: 1.5em 0 0.5em;
-}
-.prose img {
-  margin: 1.5em 0;
-  border-radius: 0.4rem;
+  color: transparent;
 }

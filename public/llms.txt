@@ -1,0 +1,8 @@
+# umyar — blog
+
+> Personal blog by Umiar Iusupov. Posts in Russian, English and Portuguese on software, life, and notes worth keeping.
+
+- Homepage: https://blog.umyar.com/
+- RSS feed: https://blog.umyar.com/rss.xml
+- Sitemap: https://blog.umyar.com/sitemap-index.xml
+- Author site: https://umyar.com

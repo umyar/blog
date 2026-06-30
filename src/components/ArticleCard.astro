@@ -1,0 +1,73 @@
+---
+interface Props {
+  href: string;
+  title: string;
+  date?: string;
+  formattedDate?: string;
+  excerpt?: string;
+}
+
+const { href, title, date, formattedDate, excerpt } = Astro.props;
+---
+
+<article class="md:grid md:grid-cols-4 md:items-baseline">
+  <!-- Whole card is the link -->
+  <a
+    href={href}
+    class="group relative flex flex-col items-start rounded-2xl focus:outline-none md:col-span-3"
+  >
+    <!-- hover background -->
+    <div
+      aria-hidden="true"
+      class="pointer-events-none absolute -inset-x-4 -inset-y-6 z-0 scale-95 bg-zinc-50 opacity-0 transition group-hover:scale-100 group-hover:opacity-100 sm:-inset-x-6 sm:rounded-2xl dark:bg-zinc-800/50"
+    >
+    </div>
+
+    <h2
+      class="relative z-10 text-base font-semibold tracking-tight text-zinc-800 group-hover:gradient-text dark:text-zinc-100"
+    >
+      {title}
+    </h2>
+
+    {
+      formattedDate && (
+        <time
+          class="relative z-10 order-first mb-3 flex items-center text-sm text-zinc-400 md:hidden dark:text-zinc-500"
+          datetime={date}
+        >
+          <span class="absolute inset-y-0 left-0 flex items-center">
+            <span class="h-4 w-0.5 rounded-full bg-gradient-to-b from-grad-from to-grad-to" />
+          </span>
+          <span class="pl-3.5">{formattedDate}</span>
+        </time>
+      )
+    }
+
+    {excerpt && <p class="relative z-10 mt-2 text-sm text-zinc-600 dark:text-zinc-400">{excerpt}</p>}
+
+    <div
+      aria-hidden="true"
+      class="gradient-text relative z-10 mt-4 flex items-center text-sm font-medium"
+    >
+      Read article
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" class="ml-1 h-4 w-4 stroke-current">
+        <path
+          d="M6.75 5.75 9.25 8l-2.5 2.25"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"></path>
+      </svg>
+    </div>
+  </a>
+
+  {
+    formattedDate && (
+      <time
+        class="relative z-10 order-first mt-1 mb-3 hidden text-sm text-zinc-400 md:block dark:text-zinc-500"
+        datetime={date}
+      >
+        {formattedDate}
+      </time>
+    )
+  }
+</article>

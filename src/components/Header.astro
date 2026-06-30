@@ -1,0 +1,72 @@
+---
+import ThemeToggle from './ThemeToggle.astro';
+
+const navItems = [
+  { href: '/', label: 'Blog' },
+  { href: 'https://umyar.com', label: 'About' },
+];
+
+const path = Astro.url.pathname;
+const isActive = (href: string) =>
+  href === '/' ? path === '/' : path.startsWith(href);
+---
+
+<header class="pt-6 pb-2">
+  <div class="relative flex items-center gap-4">
+    <!-- Avatar / wordmark (left) -->
+    <div class="flex flex-1">
+      <a
+        href="/"
+        aria-label="Home"
+        class="flex items-center gap-3 rounded-full bg-white/90 p-1.5 shadow-lg ring-1 shadow-zinc-800/5 ring-zinc-900/5 backdrop-blur transition hover:ring-zinc-900/10 sm:pr-4 dark:bg-zinc-800/90 dark:ring-white/10"
+      >
+        <img
+          src="/avatar.webp"
+          alt="Umiar Iusupov"
+          width="36"
+          height="36"
+          loading="eager"
+          decoding="async"
+          class="h-9 w-9 rounded-full object-cover"
+        />
+        <span class="hidden flex-col leading-tight sm:flex">
+          <span class="gradient-text text-sm font-bold tracking-tight">Umiar Iusupov</span>
+          <span class="text-xs font-medium text-zinc-400 dark:text-zinc-500">blog / articles</span>
+        </span>
+      </a>
+    </div>
+
+    <!-- Pill nav (center) -->
+    <nav class="flex justify-center">
+      <ul
+        class="flex rounded-full bg-white/90 px-3 text-sm font-medium text-zinc-800 shadow-lg ring-1 shadow-zinc-800/5 ring-zinc-900/5 backdrop-blur dark:bg-zinc-800/90 dark:text-zinc-200 dark:ring-white/10"
+      >
+        {
+          navItems.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                class:list={[
+                  'relative block px-3 py-2 transition',
+                  isActive(item.href)
+                    ? 'gradient-text'
+                    : 'hover:text-zinc-900 dark:hover:text-zinc-100',
+                ]}
+              >
+                {item.label}
+                {isActive(item.href) && (
+                  <span class="absolute inset-x-1 -bottom-px h-px bg-gradient-to-r from-grad-from to-grad-to" />
+                )}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <!-- Theme toggle (right) -->
+    <div class="flex flex-1 justify-end">
+      <ThemeToggle />
+    </div>
+  </div>
+</header>

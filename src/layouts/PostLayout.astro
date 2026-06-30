@@ -1,6 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import LanguageSwitcher from '../components/LanguageSwitcher.astro';
+import FontSizeSelector from '../components/FontSizeSelector.astro';
 
 interface Props {
   title: string;
@@ -10,6 +11,7 @@ interface Props {
   availableLangs?: string[];
   date?: string;
   cover?: string;
+  jsonLd?: Record<string, unknown>;
 }
 
 const {
@@ -20,6 +22,7 @@ const {
   availableLangs = [],
   date,
   cover,
+  jsonLd,
 } = Astro.props;
 
 const formattedDate = date
@@ -31,169 +34,81 @@ const formattedDate = date
   : null;
 ---
 
-<BaseLayout title={title} description={description} lang={lang}>
-  <article class="post">
-    <header class="post-header">
-      {
-        availableLangs.length > 1 && (
-          <LanguageSwitcher currentLang={lang} slug={slug} availableLangs={availableLangs} />
-        )
-      }
-      <h1 class="gradient-text post-title">{title}</h1>
-      {
-        formattedDate && (
-          <time class="post-date" datetime={date}>
-            {formattedDate}
-          </time>
-        )
-      }
-      {cover && <img class="post-cover" src={cover} alt="" />}
-    </header>
+<BaseLayout title={title} description={description} lang={lang} ogType="article" ogImage={cover}>
+  <Fragment slot="head">
+    <slot name="head" />
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    <script is:inline>
+      (function () {
+        var size = localStorage.getItem('blog-font-size') || '18';
+        document.documentElement.style.setProperty('--prose-font-size', size + 'px');
+      })();
+    </script>
+  </Fragment>
 
-    <slot name="audio" />
+  <div class="mx-auto mt-16 w-full max-w-7xl px-4 sm:px-8 lg:px-12">
+    <div class="mx-auto max-w-2xl">
+      <!-- Back button -->
+      <a
+        href="/"
+        aria-label="Back to articles"
+        class="group mb-8 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md ring-1 shadow-zinc-800/5 ring-zinc-900/5 transition hover:ring-zinc-900/10 dark:border dark:border-zinc-700/50 dark:bg-zinc-800 dark:ring-0 dark:hover:border-zinc-700"
+      >
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-hidden="true"
+          class="h-4 w-4 stroke-zinc-500 transition group-hover:stroke-zinc-700 dark:stroke-zinc-500 dark:group-hover:stroke-zinc-400"
+        >
+          <path
+            d="M7.25 11.25 3.75 8m0 0 3.5-3.25M3.75 8h8.5"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"></path>
+        </svg>
+      </a>
 
-    <div class="prose">
-      <slot />
+      <article>
+        <header class="flex flex-col">
+          {
+            availableLangs.length > 1 && (
+              <div class="mb-4">
+                <LanguageSwitcher currentLang={lang} slug={slug} availableLangs={availableLangs} />
+              </div>
+            )
+          }
+          <h1 class="gradient-text text-4xl font-bold tracking-tight text-balance sm:text-5xl leading-[1.15]">
+            {title}
+          </h1>
+          {
+            formattedDate && (
+              <time
+                class="order-first flex items-center text-base text-zinc-400 dark:text-zinc-500"
+                datetime={date}
+              >
+                <span class="h-4 w-0.5 rounded-full bg-gradient-to-b from-grad-from to-grad-to" />
+                <span class="ml-3">{formattedDate}</span>
+              </time>
+            )
+          }
+          {cover && <img class="mt-8 w-full rounded-2xl" src={cover} alt="" />}
+        </header>
+
+        <slot name="audio" />
+
+        <div class="mt-6 flex items-center justify-end">
+          <FontSizeSelector />
+        </div>
+
+        <div
+          class="prose prose-zinc dark:prose-invert mt-8 max-w-none prose-a:font-medium prose-a:no-underline hover:prose-a:underline prose-img:rounded-2xl"
+          style="font-size: var(--prose-font-size, 18px);"
+        >
+          <slot />
+        </div>
+
+        <slot name="comments" />
+      </article>
     </div>
-
-    <slot name="comments" />
-  </article>
+  </div>
 </BaseLayout>
-
-<style>
-  .post {
-    max-width: var(--maxline);
-    padding-bottom: 6rem;
-  }
-
-  .post-header {
-    margin: 4rem 0 2.5rem;
-  }
-
-  .post-title {
-    font-size: 3.6rem;
-    letter-spacing: -1px;
-    line-height: 1.15;
-    margin: 0.5rem 0;
-  }
-
-  .post-date {
-    display: block;
-    font-size: 1.3rem;
-    color: #666;
-    margin-top: 0.5rem;
-  }
-
-  .post-cover {
-    width: 100%;
-    height: auto;
-    border-radius: 6px;
-    margin-top: 2rem;
-  }
-
-  /* Prose — all content rendered from markdown/MDX */
-  .prose :global(p) {
-    margin: 1em 0;
-  }
-
-  .prose :global(h2) {
-    font-size: 2.4rem;
-    margin: 1.8em 0 0.5em;
-    line-height: 1.2;
-  }
-
-  .prose :global(h3) {
-    font-size: 2rem;
-    margin: 1.5em 0 0.4em;
-    line-height: 1.2;
-  }
-
-  .prose :global(h4) {
-    font-size: 1.8rem;
-    margin: 1.2em 0 0.3em;
-  }
-
-  .prose :global(a) {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-
-  .prose :global(a:hover) {
-    opacity: 0.7;
-  }
-
-  .prose :global(img) {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 1.5em 0;
-    border-radius: 4px;
-  }
-
-  .prose :global(blockquote) {
-    border-left: 3px solid #1a1a1a;
-    padding-left: 1.5rem;
-    margin: 1.5em 0;
-    font-style: italic;
-    color: #444;
-  }
-
-  .prose :global(code) {
-    font-family: 'Courier New', monospace;
-    font-size: 0.85em;
-    background: #f4f4f4;
-    padding: 0.15em 0.4em;
-    border-radius: 3px;
-  }
-
-  .prose :global(pre) {
-    background: #f4f4f4;
-    padding: 1.5rem;
-    overflow-x: auto;
-    border-radius: 6px;
-    margin: 1.5em 0;
-    font-size: 1.4rem;
-    line-height: 1.5;
-  }
-
-  .prose :global(pre code) {
-    background: none;
-    padding: 0;
-    font-size: inherit;
-  }
-
-  .prose :global(ul),
-  .prose :global(ol) {
-    padding-left: 1.8em;
-    margin: 1em 0;
-  }
-
-  .prose :global(li) {
-    margin: 0.4em 0;
-  }
-
-  .prose :global(hr) {
-    border: none;
-    border-top: 1px solid #e0e0e0;
-    margin: 2.5em 0;
-  }
-
-  .prose :global(table) {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1.5em 0;
-    font-size: 1.5rem;
-  }
-
-  .prose :global(th),
-  .prose :global(td) {
-    border: 1px solid #ddd;
-    padding: 0.5rem 0.75rem;
-    text-align: left;
-  }
-
-  .prose :global(th) {
-    background: #f4f4f4;
-    font-weight: 700;
-  }
-</style>
