@@ -28,11 +28,13 @@ const availableLangs = await getPostLangs(slug);
 let title: string | undefined;
 let description: string | undefined;
 let coverUrl: string | undefined;
+let audioUrl: string | undefined;
 let jsonLd: Record<string, unknown> | undefined;
 
 if (result) {
   title = result.entry.title[lang] || result.entry.title.en;
   description = result.entry.excerpt[lang] || result.entry.excerpt.en;
+  audioUrl = result.entry.audio[lang] || undefined;
   const cover = result.entry.cover;
   coverUrl = cover && (cover.startsWith('http') || cover.startsWith('/')) ? cover : undefined;
 
@@ -78,6 +80,13 @@ if (result) {
           />
         )}
       </Fragment>
+      {audioUrl && (
+        <Fragment slot="audio">
+          <audio controls preload="none" src={audioUrl} class="mt-8 w-full">
+            <a href={audioUrl}>Download audio</a>
+          </audio>
+        </Fragment>
+      )}
       <Fragment set:html={result.html} />
     </PostLayout>
   ) : (
