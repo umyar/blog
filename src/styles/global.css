@@ -32,9 +32,10 @@ body {
   color: transparent;
 }
 
-/* Emoji inside gradient-text: opt back out of the clip so the glyph keeps
-   its own colors instead of being filled by the gradient. */
-.gradient-text .emoji {
+/* Emoji inside clipped gradient text: opt back out of the clip so the glyph
+   keeps its own colors instead of being filled by the gradient. Kept unscoped
+   so it also works with group-hover:gradient-text on cards. */
+.emoji {
   -webkit-text-fill-color: initial;
   color: initial;
 }

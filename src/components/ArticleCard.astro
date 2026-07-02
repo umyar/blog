@@ -9,6 +9,20 @@ interface Props {
 }
 
 const { href, title, date, formattedDate, excerpt, cover } = Astro.props;
+
+// Split emoji out of the title so they keep their native colors instead of
+// being clipped to the gradient on hover (see .emoji in global.css).
+const titleParts: { text: string; emoji: boolean }[] = [];
+{
+  const emojiRe = /\p{Extended_Pictographic}(‍\p{Extended_Pictographic})*️?/gu;
+  let last = 0;
+  for (const m of title.matchAll(emojiRe)) {
+    if (m.index! > last) titleParts.push({ text: title.slice(last, m.index), emoji: false });
+    titleParts.push({ text: m[0], emoji: true });
+    last = m.index! + m[0].length;
+  }
+  if (last < title.length) titleParts.push({ text: title.slice(last), emoji: false });
+}
 ---
 
 <article class="md:grid md:grid-cols-4 md:items-baseline">
@@ -39,7 +53,7 @@ const { href, title, date, formattedDate, excerpt, cover } = Astro.props;
     <h2
       class="relative z-10 text-base font-semibold tracking-tight text-zinc-800 group-hover:gradient-text dark:text-zinc-100"
     >
-      {title}
+      {titleParts.map((part) => (part.emoji ? <span class="emoji">{part.text}</span> : part.text))}
     </h2>
 
     {
