@@ -40,13 +40,15 @@ const titleParts: { text: string; emoji: boolean }[] = [];
 
     {
       cover && (
-        <img
-          src={cover}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          class="relative z-10 mb-4 aspect-[2/1] w-full rounded-2xl object-cover"
-        />
+        <div class="relative z-10 mb-4 aspect-[2/1] w-full overflow-hidden rounded-2xl">
+          <img
+            src={cover}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            class="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-105"
+          />
+        </div>
       )
     }
 

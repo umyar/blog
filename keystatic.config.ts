@@ -47,6 +47,21 @@ export default config({
           },
           { label: 'Audio' }
         ),
+        audioName: fields.text({
+          label: 'Audio name (artist — track)',
+          description: 'Shown as a credit under the player. Shared across languages.',
+        }),
+        audioMeta: fields.object(
+          {
+            ru: fields.text({ label: 'Audio meta RU', multiline: true }),
+            en: fields.text({ label: 'Audio meta EN', multiline: true }),
+            pt: fields.text({ label: 'Audio meta PT', multiline: true }),
+          },
+          {
+            label: 'Audio meta text',
+            description: 'Caption shown above the player (per language).',
+          }
+        ),
         body_ru: fields.markdoc({
           label: 'Body RU',
           options: {

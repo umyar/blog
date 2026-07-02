@@ -36,12 +36,16 @@ let title: string | undefined;
 let description: string | undefined;
 let coverUrl: string | undefined;
 let audioUrl: string | undefined;
+let audioName: string | undefined;
+let audioMeta: string | undefined;
 let jsonLd: Record<string, unknown> | undefined;
 
 if (result) {
   title = result.entry.title[lang] || result.entry.title.en;
   description = result.entry.excerpt[lang] || result.entry.excerpt.en;
   audioUrl = result.entry.audio[lang] || undefined;
+  audioName = result.entry.audioName || undefined;
+  audioMeta = result.entry.audioMeta?.[lang] || undefined;
   coverUrl = await resolvePostImage(result.entry.cover);
 
   jsonLd = {
@@ -88,9 +92,17 @@ if (result) {
       </Fragment>
       {audioUrl && (
         <Fragment slot="audio">
-          <audio controls preload="none" src={audioUrl} class="mt-8 w-full">
-            <a href={audioUrl}>Download audio</a>
-          </audio>
+          <div class="mt-3">
+            {audioMeta && (
+              <p class="mb-2 ml-4 text-sm text-zinc-500 dark:text-zinc-400">{audioMeta}</p>
+            )}
+            <audio controls preload="none" src={audioUrl} class="w-full">
+              <a href={audioUrl}>Download audio</a>
+            </audio>
+            {audioName && (
+              <p class="mt-2 text-center text-xs text-zinc-400 dark:text-zinc-500">{audioName}</p>
+            )}
+          </div>
         </Fragment>
       )}
       <Fragment set:html={result.html} />
