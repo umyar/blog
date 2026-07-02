@@ -39,3 +39,32 @@ body {
   -webkit-text-fill-color: initial;
   color: initial;
 }
+
+/* Deep-linkable post headings. The whole heading is a link to its own anchor,
+   but it must look like a plain heading (the prose plugin underlines links),
+   so strip the link styling and reveal a chain icon only on hover. */
+.prose :is(h2, h3, h4, h5, h6) {
+  scroll-margin-top: 5rem;
+}
+.prose .heading-anchor {
+  color: inherit;
+  text-decoration: none;
+  font-weight: inherit;
+}
+.prose .heading-anchor-icon {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-left: 0.35em;
+  vertical-align: baseline;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  color: var(--color-grad-from);
+}
+.prose :is(h2, h3, h4, h5, h6):hover .heading-anchor-icon,
+.prose .heading-anchor:focus-visible .heading-anchor-icon {
+  opacity: 1;
+}
+.dark .prose .heading-anchor-icon {
+  color: var(--color-grad-to);
+}

@@ -9,24 +9,88 @@ export const LANGS: Lang[] = ['ru', 'en', 'pt'];
 
 const reader = createReader(process.cwd(), keystaticConfig);
 
-// Open every in-body link in a new tab. Overrides Markdoc's default `link` node to append
-// target/rel, so authors don't have to remember it per-link.
-const markdocConfig: Markdoc.Config = {
-  nodes: {
-    link: {
-      ...Markdoc.nodes.link,
-      transform(node, config) {
-        const attributes = node.transformAttributes(config);
-        const children = node.transformChildren(config);
-        return new Markdoc.Tag(
-          'a',
-          { ...attributes, target: '_blank', rel: 'noopener noreferrer' },
-          children
-        );
+// Build a GitHub-style anchor slug from a heading's text (Unicode-aware, so Cyrillic
+// titles get usable ids too): lowercase, drop punctuation/emoji, spaces → hyphens.
+function slugifyHeading(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// Concatenate all text/code content under a node so we can derive its slug.
+function headingText(node: Markdoc.Node): string {
+  return [...node.walk()]
+    .filter((n) => n.type === 'text' || n.type === 'code')
+    .map((n) => (typeof n.attributes.content === 'string' ? n.attributes.content : ''))
+    .join('');
+}
+
+// A small link/chain icon revealed on heading hover.
+const anchorIcon = new Markdoc.Tag(
+  'svg',
+  {
+    class: 'heading-anchor-icon',
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': '2',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+    'aria-hidden': 'true',
+  },
+  [
+    new Markdoc.Tag('path', { d: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71' }, []),
+    new Markdoc.Tag('path', { d: 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' }, []),
+  ]
+);
+
+// Per-render Markdoc config. Rebuilt for each post so the heading-id dedupe set
+// starts fresh. Two customizations:
+//   - links open in a new tab (target/rel appended),
+//   - headings become deep-linkable anchors (stable id + a wrapping link that
+//     updates the URL hash on click and reveals a chain icon on hover).
+function createMarkdocConfig(): Markdoc.Config {
+  const usedIds = new Set<string>();
+  return {
+    nodes: {
+      link: {
+        ...Markdoc.nodes.link,
+        transform(node, config) {
+          const attributes = node.transformAttributes(config);
+          const children = node.transformChildren(config);
+          return new Markdoc.Tag(
+            'a',
+            { ...attributes, target: '_blank', rel: 'noopener noreferrer' },
+            children
+          );
+        },
+      },
+      heading: {
+        ...Markdoc.nodes.heading,
+        transform(node, config) {
+          const children = node.transformChildren(config);
+          const level = node.attributes.level ?? 2;
+
+          let base = slugifyHeading(headingText(node)) || 'section';
+          let id = base;
+          for (let i = 2; usedIds.has(id); i++) id = `${base}-${i}`;
+          usedIds.add(id);
+
+          const link = new Markdoc.Tag(
+            'a',
+            { href: `#${id}`, class: 'heading-anchor', 'aria-label': 'Link to this section' },
+            [...children, anchorIcon]
+          );
+          return new Markdoc.Tag(`h${level}`, { id, class: 'group' }, [link]);
+        },
       },
     },
-  },
-};
+  };
+}
 
 // Body images live in `src/assets/posts/**` and are referenced from the .mdoc files with
 // Keystatic-relative paths like `../../../assets/posts/<slug>/<file>`. Those paths aren't served
@@ -92,7 +156,7 @@ export async function renderPostBody(slug: string, lang: Lang) {
   const source = await post.entry[`body_${lang}`]();
   if (source.node.children.length === 0) return null;
   await resolveBodyImages(source.node);
-  const transformed = Markdoc.transform(source.node, markdocConfig);
+  const transformed = Markdoc.transform(source.node, createMarkdocConfig());
   const html = Markdoc.renderers.html(transformed);
   return { entry: post.entry, html };
 }
