@@ -47,10 +47,17 @@ export default config({
           },
           { label: 'Audio' }
         ),
-        audioName: fields.text({
-          label: 'Audio name (artist — track)',
-          description: 'Shown as a credit under the player. Shared across languages.',
-        }),
+        audioName: fields.object(
+          {
+            ru: fields.text({ label: 'Audio name RU (artist — track)' }),
+            en: fields.text({ label: 'Audio name EN (artist — track)' }),
+            pt: fields.text({ label: 'Audio name PT (artist — track)' }),
+          },
+          {
+            label: 'Audio name (artist — track)',
+            description: 'Shown as a credit under the player (per language).',
+          }
+        ),
         audioMeta: fields.object(
           {
             ru: fields.text({ label: 'Audio meta RU', multiline: true }),

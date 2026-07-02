@@ -44,7 +44,7 @@ if (result) {
   title = result.entry.title[lang] || result.entry.title.en;
   description = result.entry.excerpt[lang] || result.entry.excerpt.en;
   audioUrl = result.entry.audio[lang] || undefined;
-  audioName = result.entry.audioName || undefined;
+  audioName = result.entry.audioName?.[lang] || undefined;
   audioMeta = result.entry.audioMeta?.[lang] || undefined;
   coverUrl = await resolvePostImage(result.entry.cover);
 
