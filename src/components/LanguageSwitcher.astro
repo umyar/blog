@@ -10,15 +10,18 @@ const { currentLang, slug, availableLangs } = Astro.props;
 const labels: Record<string, string> = { ru: 'RU', en: 'EN', pt: 'PT' };
 ---
 
-<nav class="flex gap-3 text-xs font-bold tracking-wider" aria-label="Language">
+<nav
+  class="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-700 dark:bg-zinc-800"
+  aria-label="Language"
+>
   {
     availableLangs.map((lang) => (
       <a
         href={`/posts/${lang}/${slug}`}
         class:list={[
-          'transition',
+          'rounded-full px-3 py-1 text-sm font-bold tracking-wider transition',
           lang === currentLang
-            ? 'gradient-text'
+            ? 'bg-gradient-to-l from-grad-to to-grad-from text-white shadow-sm'
             : 'text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300',
         ]}
         aria-current={lang === currentLang ? 'page' : undefined}

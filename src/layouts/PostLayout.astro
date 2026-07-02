@@ -84,27 +84,25 @@ const formattedDate = date
 
       <article>
         <header class="flex flex-col">
-          {
-            availableLangs.length > 1 && (
-              <div class="mb-4">
-                <LanguageSwitcher currentLang={lang} slug={slug} availableLangs={availableLangs} />
-              </div>
-            )
-          }
-          <h1 class="gradient-text text-4xl font-bold tracking-tight text-balance sm:text-5xl leading-[1.15]">
-            {titleParts.map((part) => (part.emoji ? <span class="emoji">{part.text}</span> : part.text))}
-          </h1>
-          {
-            formattedDate && (
+          <div class="order-first mb-4 flex items-center justify-between gap-4">
+            {formattedDate ? (
               <time
-                class="order-first flex items-center text-base text-zinc-400 dark:text-zinc-500"
+                class="flex items-center text-base text-zinc-400 dark:text-zinc-500"
                 datetime={date}
               >
                 <span class="h-4 w-0.5 rounded-full bg-gradient-to-b from-grad-from to-grad-to" />
                 <span class="ml-3">{formattedDate}</span>
               </time>
-            )
-          }
+            ) : (
+              <span />
+            )}
+            {availableLangs.length > 1 && (
+              <LanguageSwitcher currentLang={lang} slug={slug} availableLangs={availableLangs} />
+            )}
+          </div>
+          <h1 class="gradient-text text-4xl font-bold tracking-tight text-balance sm:text-5xl leading-[1.15]">
+            {titleParts.map((part) => (part.emoji ? <span class="emoji">{part.text}</span> : part.text))}
+          </h1>
           {cover && <img class="mt-8 w-full rounded-2xl" src={cover} alt="" />}
         </header>
 
