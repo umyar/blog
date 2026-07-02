@@ -6,7 +6,14 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import PostLayout from '../../../layouts/PostLayout.astro';
 import LanguageSwitcher from '../../../components/LanguageSwitcher.astro';
-import { getAllPosts, getPostLangs, renderPostBody, LANGS, type Lang } from '../../../lib/posts';
+import {
+  getAllPosts,
+  getPostLangs,
+  renderPostBody,
+  resolvePostImage,
+  LANGS,
+  type Lang,
+} from '../../../lib/posts';
 
 export async function getStaticPaths() {
   const posts = await getAllPosts();
@@ -35,8 +42,7 @@ if (result) {
   title = result.entry.title[lang] || result.entry.title.en;
   description = result.entry.excerpt[lang] || result.entry.excerpt.en;
   audioUrl = result.entry.audio[lang] || undefined;
-  const cover = result.entry.cover;
-  coverUrl = cover && (cover.startsWith('http') || cover.startsWith('/')) ? cover : undefined;
+  coverUrl = await resolvePostImage(result.entry.cover);
 
   jsonLd = {
     '@context': 'https://schema.org',

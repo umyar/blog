@@ -24,17 +24,28 @@ for (const [key, mod] of Object.entries(imageModules)) {
   if (rel) imagesByRelPath.set(rel, mod.default);
 }
 
+// Resolve a Keystatic-relative asset path (e.g. `../../../assets/posts/<slug>/<file>`) to an
+// Astro-optimized URL. Absolute URLs pass through untouched; unknown paths return undefined.
+export async function resolvePostImage(
+  src: string | null | undefined
+): Promise<string | undefined> {
+  if (!src) return undefined;
+  if (src.startsWith('http')) return src;
+  const rel = src.split('assets/posts/')[1];
+  const meta = rel ? imagesByRelPath.get(rel) : undefined;
+  if (!meta) return undefined;
+  const optimized = await getImage({ src: meta });
+  return optimized.src;
+}
+
 // Rewrite each image node's `src` in-place to an Astro-optimized URL. Mutates the AST.
 async function resolveBodyImages(node: Markdoc.Node) {
   const imageNodes = [...node.walk()].filter((n) => n.type === 'image');
   for (const imageNode of imageNodes) {
     const src = imageNode.attributes.src;
     if (typeof src !== 'string') continue;
-    const rel = src.split('assets/posts/')[1];
-    const meta = rel ? imagesByRelPath.get(rel) : undefined;
-    if (!meta) continue;
-    const optimized = await getImage({ src: meta });
-    imageNode.attributes.src = optimized.src;
+    const resolved = await resolvePostImage(src);
+    if (resolved) imageNode.attributes.src = resolved;
   }
 }
 
