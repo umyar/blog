@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArticleCard from '../components/ArticleCard.astro';
-import { getAllPosts, getPostLangs, type Lang } from '../lib/posts';
+import { getAllPosts, getPostLangs, resolvePostImage, type Lang } from '../lib/posts';
 
 const posts = await getAllPosts();
 const cards = [];
@@ -15,6 +15,7 @@ for (const post of posts) {
     title: post.entry.title[lang],
     excerpt: post.entry.excerpt[lang],
     date: post.entry.date,
+    cover: await resolvePostImage(post.entry.cover),
   });
 }
 cards.sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -96,6 +97,7 @@ const fmt = (date: string) =>
                   date={card.date}
                   formattedDate={fmt(card.date)}
                   excerpt={card.excerpt}
+                  cover={card.cover}
                 />
               ))}
             </div>

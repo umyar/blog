@@ -31,3 +31,10 @@ body {
   -webkit-text-fill-color: transparent;
   color: transparent;
 }
+
+/* Emoji inside gradient-text: opt back out of the clip so the glyph keeps
+   its own colors instead of being filled by the gradient. */
+.gradient-text .emoji {
+  -webkit-text-fill-color: initial;
+  color: initial;
+}

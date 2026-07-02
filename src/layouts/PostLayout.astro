@@ -25,6 +25,20 @@ const {
   jsonLd,
 } = Astro.props;
 
+// Split the title so emoji render in their native colors instead of being
+// clipped to the gradient (background-clip: text makes everything transparent).
+const titleParts: { text: string; emoji: boolean }[] = [];
+{
+  const emojiRe = /\p{Extended_Pictographic}(‍\p{Extended_Pictographic})*️?/gu;
+  let last = 0;
+  for (const m of title.matchAll(emojiRe)) {
+    if (m.index! > last) titleParts.push({ text: title.slice(last, m.index), emoji: false });
+    titleParts.push({ text: m[0], emoji: true });
+    last = m.index! + m[0].length;
+  }
+  if (last < title.length) titleParts.push({ text: title.slice(last), emoji: false });
+}
+
 const formattedDate = date
   ? new Date(date).toLocaleDateString(lang === 'ru' ? 'ru-RU' : lang === 'pt' ? 'pt-BR' : 'en-US', {
       year: 'numeric',
@@ -78,7 +92,7 @@ const formattedDate = date
             )
           }
           <h1 class="gradient-text text-4xl font-bold tracking-tight text-balance sm:text-5xl leading-[1.15]">
-            {title}
+            {titleParts.map((part) => (part.emoji ? <span class="emoji">{part.text}</span> : part.text))}
           </h1>
           {
             formattedDate && (

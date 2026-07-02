@@ -5,9 +5,10 @@ interface Props {
   date?: string;
   formattedDate?: string;
   excerpt?: string;
+  cover?: string;
 }
 
-const { href, title, date, formattedDate, excerpt } = Astro.props;
+const { href, title, date, formattedDate, excerpt, cover } = Astro.props;
 ---
 
 <article class="md:grid md:grid-cols-4 md:items-baseline">
@@ -22,6 +23,18 @@ const { href, title, date, formattedDate, excerpt } = Astro.props;
       class="pointer-events-none absolute -inset-x-4 -inset-y-6 z-0 scale-95 bg-zinc-50 opacity-0 transition group-hover:scale-100 group-hover:opacity-100 sm:-inset-x-6 sm:rounded-2xl dark:bg-zinc-800/50"
     >
     </div>
+
+    {
+      cover && (
+        <img
+          src={cover}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          class="relative z-10 mb-4 aspect-[2/1] w-full rounded-2xl object-cover"
+        />
+      )
+    }
 
     <h2
       class="relative z-10 text-base font-semibold tracking-tight text-zinc-800 group-hover:gradient-text dark:text-zinc-100"
