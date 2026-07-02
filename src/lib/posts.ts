@@ -9,6 +9,25 @@ export const LANGS: Lang[] = ['ru', 'en', 'pt'];
 
 const reader = createReader(process.cwd(), keystaticConfig);
 
+// Open every in-body link in a new tab. Overrides Markdoc's default `link` node to append
+// target/rel, so authors don't have to remember it per-link.
+const markdocConfig: Markdoc.Config = {
+  nodes: {
+    link: {
+      ...Markdoc.nodes.link,
+      transform(node, config) {
+        const attributes = node.transformAttributes(config);
+        const children = node.transformChildren(config);
+        return new Markdoc.Tag(
+          'a',
+          { ...attributes, target: '_blank', rel: 'noopener noreferrer' },
+          children
+        );
+      },
+    },
+  },
+};
+
 // Body images live in `src/assets/posts/**` and are referenced from the .mdoc files with
 // Keystatic-relative paths like `../../../assets/posts/<slug>/<file>`. Those paths aren't served
 // as-is, so we resolve each one through Astro's asset pipeline. Eager-globbing the assets gives us
@@ -73,7 +92,7 @@ export async function renderPostBody(slug: string, lang: Lang) {
   const source = await post.entry[`body_${lang}`]();
   if (source.node.children.length === 0) return null;
   await resolveBodyImages(source.node);
-  const transformed = Markdoc.transform(source.node);
+  const transformed = Markdoc.transform(source.node, markdocConfig);
   const html = Markdoc.renderers.html(transformed);
   return { entry: post.entry, html };
 }
