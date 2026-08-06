@@ -1,0 +1,121 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { auth } from '../lib/auth';
+
+export const prerender = false;
+
+function safeNext(raw: string | null): string {
+  if (!raw) return '/';
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (decoded.startsWith('/') && !decoded.startsWith('//')) return decoded;
+  } catch {}
+  return '/';
+}
+
+const session = await auth.api.getSession({ headers: Astro.request.headers });
+const next = safeNext(Astro.url.searchParams.get('next'));
+
+if (!session) {
+  return Astro.redirect('/');
+}
+if (session.user.profileComplete) {
+  return Astro.redirect(next);
+}
+---
+
+<BaseLayout title="Complete your profile — umyar blog" description="One-time profile setup.">
+  <div class="mx-auto mt-16 w-full max-w-7xl px-6 sm:px-14 lg:px-24">
+    <div class="mx-auto max-w-md">
+      <div
+        class="rounded-2xl bg-white p-8 shadow-md ring-1 shadow-zinc-800/5 ring-zinc-900/5 dark:border dark:border-zinc-700/50 dark:bg-zinc-800 dark:ring-0"
+      >
+        <h1 class="gradient-text text-2xl font-bold tracking-tight">Welcome!</h1>
+        <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          One quick step before you can comment — this is only asked once.
+        </p>
+
+        <form id="profile-form" class="mt-6 flex flex-col gap-4" data-next={next}>
+          <label class="flex flex-col gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            First name
+            <input
+              name="firstName"
+              type="text"
+              required
+              maxlength="60"
+              class="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800 outline-none focus:border-grad-from dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+          </label>
+          <label class="flex flex-col gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Last name
+            <input
+              name="lastName"
+              type="text"
+              required
+              maxlength="60"
+              class="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800 outline-none focus:border-grad-from dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+          </label>
+          <label class="flex flex-col gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Photo URL
+            <input
+              name="avatarUrl"
+              type="url"
+              required
+              placeholder="https://…"
+              class="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800 outline-none focus:border-grad-from dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+          </label>
+          <p class="hidden text-sm text-red-600" id="profile-error"></p>
+          <button
+            type="submit"
+            class="mt-2 rounded-full bg-gradient-to-r from-grad-from to-grad-to px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+          >
+            Save and continue
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { isValidHttpUrl } from '../lib/validate';
+
+  const form = document.getElementById('profile-form') as HTMLFormElement;
+  const errorEl = document.getElementById('profile-error') as HTMLParagraphElement;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl.classList.add('hidden');
+
+    const data = new FormData(form);
+    const firstName = String(data.get('firstName') || '').trim();
+    const lastName = String(data.get('lastName') || '').trim();
+    const avatarUrl = String(data.get('avatarUrl') || '').trim();
+
+    if (!isValidHttpUrl(avatarUrl)) {
+      errorEl.textContent = 'Photo URL must start with http:// or https://';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    submitBtn.disabled = true;
+
+    const res = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstName, lastName, avatarUrl }),
+    });
+
+    if (!res.ok) {
+      errorEl.textContent = 'Something went wrong — please check your inputs and try again.';
+      errorEl.classList.remove('hidden');
+      submitBtn.disabled = false;
+      return;
+    }
+
+    window.location.href = form.dataset.next || '/';
+  });
+</script>

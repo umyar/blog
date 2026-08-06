@@ -6,6 +6,8 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import PostLayout from '../../../layouts/PostLayout.astro';
 import LanguageSwitcher from '../../../components/LanguageSwitcher.astro';
+import AuthWidget from '../../../components/AuthWidget.astro';
+import CommentsSection from '../../../components/CommentsSection.astro';
 import {
   getAllPosts,
   getPostLangs,
@@ -106,6 +108,10 @@ if (result) {
         </Fragment>
       )}
       <Fragment set:html={result.html} />
+      <Fragment slot="comments">
+        <AuthWidget />
+        <CommentsSection slug={slug} lang={lang} />
+      </Fragment>
     </PostLayout>
   ) : (
     <BaseLayout title="Not available — umyar blog" lang={lang}>

@@ -20,14 +20,19 @@
     "@keystatic/astro": "^5.1.0",
     "@keystatic/core": "^0.5.50",
     "@markdoc/markdoc": "^0.5.7",
+    "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "^4.3.2",
     "astro": "^6.4.4",
+    "better-auth": "^1.6.23",
+    "drizzle-orm": "^0.45.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "resend": "^6.17.2",
     "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
+    "drizzle-kit": "^0.31.10",
     "prettier": "^3.8.3",
     "prettier-plugin-astro": "^0.14.1"
   }

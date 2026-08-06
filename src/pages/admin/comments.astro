@@ -1,0 +1,112 @@
+---
+export const prerender = false;
+
+import { desc, eq } from 'drizzle-orm';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { auth } from '../../lib/auth';
+import { db } from '../../lib/db';
+import { comment, user } from '../../lib/db/schema';
+import { isAdmin } from '../../lib/admin';
+
+const session = await auth.api.getSession({ headers: Astro.request.headers });
+if (!session || !isAdmin(session.user.id)) {
+  return Astro.redirect('/');
+}
+
+const rows = await db
+  .select({
+    id: comment.id,
+    postSlug: comment.postSlug,
+    lang: comment.lang,
+    anchorExact: comment.anchorExact,
+    body: comment.body,
+    status: comment.status,
+    createdAt: comment.createdAt,
+    firstName: user.firstName,
+    lastName: user.lastName,
+  })
+  .from(comment)
+  .innerJoin(user, eq(comment.userId, user.id))
+  .orderBy(desc(comment.createdAt));
+---
+
+<BaseLayout title="Comment moderation — umyar blog" description="Admin-only comment moderation.">
+  <div class="mx-auto mt-16 w-full max-w-7xl px-6 sm:px-14 lg:px-24">
+    <div class="mx-auto max-w-5xl">
+      <h1 class="gradient-text text-2xl font-bold tracking-tight">Comment moderation</h1>
+      <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{rows.length} total comments.</p>
+
+      <ul class="mt-8 flex flex-col gap-3">
+        {
+          rows.map((r) => (
+            <li
+              data-id={r.id}
+              class:list={[
+                'rounded-xl border p-4 text-sm',
+                r.status === 'hidden'
+                  ? 'border-zinc-200 bg-zinc-50 opacity-60 dark:border-zinc-700/50 dark:bg-zinc-800/50'
+                  : 'border-zinc-200 bg-white dark:border-zinc-700/50 dark:bg-zinc-800',
+              ]}
+            >
+              <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400 dark:text-zinc-500">
+                <span>
+                  <strong class="text-zinc-700 dark:text-zinc-300">{r.firstName} {r.lastName}</strong>
+                  {' · '}
+                  {r.postSlug}/{r.lang}
+                  {' · '}
+                  {new Date(r.createdAt).toLocaleString()}
+                  {' · '}
+                  <span class="uppercase">{r.status}</span>
+                </span>
+                <span class="flex gap-2">
+                  <button type="button" class="admin-hide-btn rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-500 hover:border-zinc-400 hover:text-zinc-800 dark:border-zinc-700 dark:text-zinc-400">
+                    {r.status === 'hidden' ? 'Unhide' : 'Hide'}
+                  </button>
+                  <button type="button" class="admin-delete-btn rounded-full border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:border-red-400 dark:border-red-900">
+                    Delete
+                  </button>
+                </span>
+              </div>
+              <p class="mt-2 border-l-2 border-grad-from pl-2 text-xs text-zinc-500 italic dark:text-zinc-400">
+                {r.anchorExact}
+              </p>
+              <p class="mt-1 text-zinc-700 dark:text-zinc-300">{r.body}</p>
+            </li>
+          ))
+        }
+      </ul>
+
+      {rows.length === 0 && (
+        <p class="mt-8 text-sm text-zinc-400 dark:text-zinc-500">No comments yet.</p>
+      )}
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.admin-hide-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const li = btn.closest('li') as HTMLElement;
+      const id = li.dataset.id!;
+      const currentlyHidden = btn.textContent?.trim() === 'Unhide';
+      btn.disabled = true;
+      await fetch(`/api/comments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: currentlyHidden ? 'visible' : 'hidden' }),
+      });
+      window.location.reload();
+    });
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('.admin-delete-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this comment permanently?')) return;
+      const li = btn.closest('li') as HTMLElement;
+      const id = li.dataset.id!;
+      btn.disabled = true;
+      await fetch(`/api/comments/${id}`, { method: 'DELETE' });
+      window.location.reload();
+    });
+  });
+</script>

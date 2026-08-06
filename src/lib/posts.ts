@@ -121,6 +121,21 @@ export async function resolvePostImage(
   return optimized.src;
 }
 
+// Tags each top-level rendered block with a sequential `data-block-index`, giving
+// comment anchors (COMMENTS.md §6) a coordinate that survives re-renders of everything
+// else in the post. The document node's default transform wraps top-level blocks in an
+// outer `article` Tag, so this only needs to walk one level of `.children`.
+function assignBlockIndices(root: Markdoc.RenderableTreeNode) {
+  if (!Markdoc.Tag.isTag(root)) return;
+  let index = 0;
+  for (const child of root.children) {
+    if (Markdoc.Tag.isTag(child)) {
+      child.attributes = { ...child.attributes, 'data-block-index': index };
+      index++;
+    }
+  }
+}
+
 // Rewrite each image node's `src` in-place to an Astro-optimized URL. Mutates the AST.
 async function resolveBodyImages(node: Markdoc.Node) {
   const imageNodes = [...node.walk()].filter((n) => n.type === 'image');
@@ -157,6 +172,7 @@ export async function renderPostBody(slug: string, lang: Lang) {
   if (source.node.children.length === 0) return null;
   await resolveBodyImages(source.node);
   const transformed = Markdoc.transform(source.node, createMarkdocConfig());
+  assignBlockIndices(transformed);
   const html = Markdoc.renderers.html(transformed);
   return { entry: post.entry, html };
 }

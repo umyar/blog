@@ -68,3 +68,59 @@ body {
 .dark .prose .heading-anchor-icon {
   color: var(--color-grad-to);
 }
+
+/* Comments (COMMENTS.md §8) — highlighted quoted spans, the margin avatar column
+   (portal-appended to <body> at runtime, positioned in document coordinates so it
+   doesn't need a scroll listener), and the shared "go to source / go to comment"
+   flash pulse used by both marks and bottom-list items. */
+.prose mark.comment-highlight {
+  background: color-mix(in srgb, var(--color-grad-from) 14%, transparent);
+  border-bottom: 2px solid var(--color-grad-from);
+  border-radius: 2px;
+  padding: 0 1px;
+  cursor: pointer;
+  color: inherit;
+}
+.dark .prose mark.comment-highlight {
+  background: color-mix(in srgb, var(--color-grad-to) 20%, transparent);
+  border-bottom-color: var(--color-grad-to);
+}
+
+#comment-margin-column {
+  position: absolute;
+  top: 0;
+  width: 32px;
+}
+.comment-avatar-btn {
+  position: absolute;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 9999px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px #fff;
+}
+.dark .comment-avatar-btn {
+  box-shadow: 0 0 0 2px #18181b;
+}
+.comment-avatar-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@keyframes comment-flash {
+  0% {
+    background-color: color-mix(in srgb, var(--color-grad-from) 30%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.comment-flash {
+  animation: comment-flash 1.5s ease-out;
+  border-radius: 4px;
+}

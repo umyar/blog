@@ -4,6 +4,24 @@
 
 ---
 
+## 0. Status (2026-07-22)
+
+| Sub-phase | State |
+| --- | --- |
+| A — Auth + profile completion | 🟡 **Email magic link done + verified end-to-end.** Telegram login (§5 task 3) not started — blocked on the bot not existing yet. |
+| B — Stable block indices | ✅ **Done and tested** — rendering + resolve/capture helpers, proven both standalone and through sub-phase D's real usage. |
+| C — Comment API | ✅ **Done and tested**, including author-or-admin `DELETE`. |
+| D — Selection UI / margin avatars / bottom list | ✅ **Done and tested** (email login path only — Telegram still pending, see sub-phase A). |
+| E — Moderation | ✅ **Done and tested.** Two of three tasks landed in sub-phase C already (allowlist, rate limiting) — see status note. |
+
+Only Telegram login is left before the whole spec is done — its implementation plan now lives in a separate file, [`telegram-auth.md`](telegram-auth.md) (split out since it's blocked on external setup and has enough of its own detail — bot creation, the HMAC verification algorithm, the no-email design decision — to warrant its own doc). That file being written does **not** mean this task is done; it's still open until that plan is actually built and verified. Details and file list for everything else are inline in each sub-phase below (look for "**Status:**").
+
+**One thing still needs your input:** `ADMIN_USER_IDS` is set locally to your account's id from testing — carry it into Vercel's env vars (and add any other admins) before deploying.
+
+(The `DELETE` authorization question — author-or-admin vs. admin-only — is resolved: you confirmed authors can delete their own comments, admins can delete any. See the sub-phase C note.)
+
+---
+
 ## 1. Goal
 
 Readers select a span of text inside a post's prose column and attach a comment to it, the way Google Docs / Medium margin notes work:
@@ -32,10 +50,10 @@ Create accounts / obtain tokens and put them in `.env` (local) + Vercel project 
 
 External setup checklist:
 
-- **Telegram bot**: @BotFather → new bot → save token → `/setdomain` = `blog.umyar.com` (required for the Telegram Login Widget to work at all — verify this before debugging the callback).
-- **Neon**: create project + database, copy the pooled `DATABASE_URL`.
-- **Resend**: verify the sending domain (`umyar.com` or a subdomain); create an API key.
-- **Vercel**: add all of the above as env vars on the project once obtained.
+- ⬜ **Telegram bot**: @BotFather → new bot → save token → `/setdomain` = `blog.umyar.com` (required for the Telegram Login Widget to work at all — verify this before debugging the callback). **Not created yet — blocks §5 task 3.**
+- ✅ **Neon**: create project + database, copy the pooled `DATABASE_URL`. `DATABASE_URL` is set in local `.env`; schema pushed via `drizzle-kit push`.
+- ✅ **Resend**: verify the sending domain (`umyar.com` or a subdomain); create an API key. `RESEND_API_KEY`/`EMAIL_FROM` set; a real magic-link send succeeded with no API error during testing (no inbox delivery check performed).
+- ⬜ **Vercel**: add all of the above as env vars on the project once obtained. Only done locally so far — nothing pushed to the Vercel project's env vars yet.
 
 ## 4. Data model (Drizzle / Neon)
 
@@ -69,6 +87,18 @@ No `parent_id` — v1 is flat. `block_index` + prefix/suffix context resolve the
 
 ## 5. Sub-phase A — Auth + profile completion
 
+**Status: email magic link done and verified (2026-07-21). Telegram (task 3) not started — plan in [`telegram-auth.md`](telegram-auth.md), blocked on the bot existing.**
+
+Files: [`src/lib/db/schema.ts`](src/lib/db/schema.ts) (Better Auth tables + profile columns + `comment` table), [`src/lib/auth.ts`](src/lib/auth.ts) (Better Auth + Drizzle adapter + magic-link plugin), [`src/lib/email.ts`](src/lib/email.ts) (Resend sender), [`src/lib/auth-client.ts`](src/lib/auth-client.ts), [`src/lib/validate.ts`](src/lib/validate.ts) (shared `http(s)`-only URL check), [`src/pages/api/auth/[...all].ts`](src/pages/api/auth/%5B...all%5D.ts) (Better Auth's Astro handler), [`src/pages/welcome.astro`](src/pages/welcome.astro) + [`src/pages/api/profile.ts`](src/pages/api/profile.ts) (profile-completion gate), [`src/components/AuthWidget.astro`](src/components/AuthWidget.astro) (login/signed-in status, wired into a real post page for testing).
+
+In dev (`import.meta.env.DEV`), `baseURL`/`trustedOrigins` in `auth.ts` auto-switch to `localhost:4321` so magic links are clickable locally without touching the prod `BETTER_AUTH_URL`.
+
+**Bug caught + fixed during testing:** the schema originally used plain `timestamp` columns. The neon-http driver round-trips those using the server process's local offset instead of UTC, which silently shifted `expires_at` by an hour — magic-link tokens would have looked expired almost immediately. Fixed by switching every timestamp column to `timestamptz` (`{ withTimezone: true }`).
+
+Verified via a mix of the real browser and direct calls to the auth API: new-user sign-in → session created with `profile_complete: false` → redirected to `/welcome` → profile saved (`javascript:` avatar URL rejected with 400, `https://` URL accepted) → `profile_complete: true`. A second sign-in for the same email skips `/welcome` and goes straight back to the post. A tampered or replayed magic-link token is rejected with no session granted. The widget shows "Signed in as …" / sign-out correctly, and sign-out clears the session cookie.
+
+Not done: Telegram login (task 3 below), and the "Telegram callback rejects a tampered/replayed payload" acceptance criterion (needs the bot to exist first).
+
 **Tasks**
 
 1. Install + configure **Better Auth** with the Drizzle adapter, pointed at Neon. Run its schema migration; add the `first_name` / `last_name` / `avatar_url` / `profile_complete` columns from §4.
@@ -79,12 +109,20 @@ No `parent_id` — v1 is flat. `block_index` + prefix/suffix context resolve the
 
 **Acceptance criteria**
 
-- A first-time visitor can sign in via **either** Telegram or email magic link, is prompted exactly once for name/last name/photo URL, and lands back on the post afterward.
-- A returning user (already `profile_complete`) logs in via either method and is never shown the profile form again.
-- Telegram callback rejects a tampered/replayed payload (bad hash or stale `auth_date`).
-- `avatar_url` accepting a non-image or `javascript:` URL is rejected client- and server-side (scheme allowlist: `http:`/`https:`).
+- ✅🟡 A first-time visitor can sign in via **either** Telegram or email magic link, is prompted exactly once for name/last name/photo URL, and lands back on the post afterward. *(verified for email; Telegram not built yet)*
+- ✅🟡 A returning user (already `profile_complete`) logs in via either method and is never shown the profile form again. *(verified for email; Telegram not built yet)*
+- ⬜ Telegram callback rejects a tampered/replayed payload (bad hash or stale `auth_date`). *(blocked — bot doesn't exist yet)*
+- ✅ `avatar_url` accepting a non-image or `javascript:` URL is rejected client- and server-side (scheme allowlist: `http:`/`https:`).
 
 ## 6. Sub-phase B — Stable block indices for anchoring
+
+**Status: rendering + client helpers done and tested (2026-07-22). The "Add comment" UI itself is sub-phase D.**
+
+Files: [`src/lib/posts.ts`](src/lib/posts.ts) (`assignBlockIndices` — tags each top-level Markdoc-rendered block with sequential `data-block-index`, wired into `renderPostBody`), [`src/lib/anchor.ts`](src/lib/anchor.ts) (`resolveAnchor` — resolves a stored anchor back to a live `Range`, for both highlight-wrapping and `getBoundingClientRect()` positioning in sub-phase D), [`src/lib/selection.ts`](src/lib/selection.ts) (`captureSelection` — the reverse direction: turns the current window selection into `{blockIndex, exact, prefix, suffix, offsetHint}`, returning `null` for empty or cross-block selections).
+
+Verified live against the real post (`/posts/en/my-1st-year-in-portugal`, 37 blocks tagged): capture → resolve round-trips to the exact selected text; cross-block selection → `null`; orphaned text / nonexistent block → `null`, no throw.
+
+**Bug caught + fixed:** when a selection sits at the very start or end of a block, `prefix` or `suffix` is empty, which made the primary "with context" match degenerate to a bare `exact` search — but that path wasn't using `offsetHint` to disambiguate duplicates, only the separate fallback path was. Fixed so both the context search and the fallback pick the occurrence nearest `offsetHint` (verified with a synthetic block containing "yes" three times).
 
 Selection-based anchoring needs a stable coordinate system that survives re-renders but is cheap to compute. Rather than raw DOM offsets (which shift with any markup change), tag each **top-level block** of the rendered post body (`<p>`, `<li>`, `<blockquote>`, `<h2>`, `<h3>`, etc.) with a sequential `data-block-index` at render time.
 
@@ -100,11 +138,21 @@ Selection-based anchoring needs a stable coordinate system that survives re-rend
 
 **Acceptance criteria**
 
-- Re-rendering a post after a trivial content tweak (e.g., fixing a typo two paragraphs away) does not move or break existing anchors.
-- Editing the exact quoted sentence causes that one comment's marker to disappear from the margin/inline highlight, while the comment still shows in the bottom list.
-- A cross-paragraph selection is rejected by the UI before it ever reaches the API.
+- ✅ Re-rendering a post after a trivial content tweak (e.g., fixing a typo two paragraphs away) does not move or break existing anchors. *(structural — block indices are assigned per top-level block in document order, so editing text inside one block can't shift another's index)*
+- 🟡 Editing the exact quoted sentence causes that one comment's marker to disappear from the margin/inline highlight, while the comment still shows in the bottom list. *(`resolveAnchor` returns `null` for this case, verified; the margin/bottom-list rendering that reacts to it is sub-phase D)*
+- 🟡 A cross-paragraph selection is rejected by the UI before it ever reaches the API. *(`captureSelection` returns `null` for this case, verified; the actual "Add comment" UI that gates on it is sub-phase D)*
 
 ## 7. Sub-phase C — Comment API
+
+**Status: done and tested (2026-07-22).**
+
+Files: [`src/pages/api/comments/index.ts`](src/pages/api/comments/index.ts) (`GET`/`POST`), [`src/pages/api/comments/[id].ts`](src/pages/api/comments/%5Bid%5D.ts) (`DELETE`), [`src/lib/admin.ts`](src/lib/admin.ts) (`ADMIN_USER_IDS` allowlist check — needed now for `DELETE`'s authorization, even though the admin UI itself is sub-phase E). Rate limiting is Neon-backed (§9's "Neon-backed counter is enough for v1"): counts the user's own comments in the last 60s, caps at 5.
+
+**Spec conflict, resolved (2026-08-06):** §7 describes `DELETE` as "author or admin only," but §11 (Out of scope) said *"Editing/deleting your own comment after posting (only admin hide/delete in v1)."* Initially implemented admin-only per §11; you confirmed self-delete is fine, so `DELETE` now allows the comment's own author **or** an admin — `isOwner || isAdmin(session.user.id)` in `[id].ts`, with a 404 if the id doesn't exist and 403 if neither check passes. §11's bullet is now stale (see below).
+
+Also set `ADMIN_USER_IDS` in `.env` to your own user id (`Lh21q1yCrvn6nl6QEr72jpKmcHU4f7yZ`, the account under `umiarka@gmail.com` created during sub-phase A testing) so the admin path was actually testable — carry this into Vercel's env vars too when you deploy, and add any other admin user ids there once you know them.
+
+Verified: `GET` filters/sorts correctly and rejects a bad query (400); `POST` returns 401 logged-out, 403 `profile_incomplete` for an unfinished profile, 400 for empty body/selection, 201 + row on success; an EN comment never showed up when fetching RU for the same slug; firing 6 rapid posts as one user let the first 5 through and 429'd the 6th; `DELETE` returned 401 logged-out, 404 for a nonexistent id, 403 for a non-owner non-admin, 204 for both the comment's own author and a separate admin account (comment gone from a follow-up `GET` either way). A `<script>` payload in `body` round-trips as an inert JSON string — actual HTML-escaping on render is sub-phase D's job, per §8's own XSS acceptance criterion.
 
 **Routes** (`prerender = false`):
 
@@ -114,11 +162,21 @@ Selection-based anchoring needs a stable coordinate system that survives re-rend
 
 **Acceptance criteria**
 
-- Posting while logged out returns 401; posting with an incomplete profile returns 403 with a clear reason the client can use to redirect into the profile flow.
-- A RU comment on a slug never appears when fetching the EN comments for the same slug.
-- Rate limiting blocks rapid repeat posts from the same user/IP.
+- ✅ Posting while logged out returns 401; posting with an incomplete profile returns 403 with a clear reason the client can use to redirect into the profile flow.
+- ✅ A RU comment on a slug never appears when fetching the EN comments for the same slug.
+- ✅ Rate limiting blocks rapid repeat posts from the same user/IP. *(implemented per-user; the schema has no IP column, and posting is auth-only anyway, so IP wasn't added as a second dimension — see status note above)*
 
 ## 8. Sub-phase D — Selection UI, margin avatars, bottom list
+
+**Status: done and tested (2026-07-22).**
+
+Files: [`src/components/CommentsSection.astro`](src/components/CommentsSection.astro) (everything — selection capture, bubble/hint, composer popover, highlight rendering, margin avatar column, bottom list, go-to-source), [`src/lib/format.ts`](src/lib/format.ts) (relative-date helper), plus new rules in [`src/styles/global.css`](src/styles/global.css) (`.comment-highlight`, `#comment-margin-column`, `.comment-avatar-btn`, `.comment-flash`). Wired into [`src/pages/posts/[lang]/[slug].astro`](src/pages/posts/%5Blang%5D/%5Bslug%5D.astro) alongside `AuthWidget`.
+
+Margin avatars are portal-appended to `<body>` at runtime and positioned in document coordinates (not viewport-relative), so they scroll with the page for free — only resize needs to recompute. Gated to `lg:` (1024px+); below that the column is torn down and highlights fall back to plain inline `<mark>` styling with tap-to-jump, per §2's mobile decision.
+
+**Bug caught + fixed:** the composer's inline "sign in" form ignored `signIn.magicLink`'s `{ error }` result and unconditionally showed "check your inbox," even on a real failure — masking the *actual* root bug: the email `<input>` had no `name="email"`, so `FormData` never picked it up and every submission silently sent an empty string (which then always failed server-side validation, so `authClient.getSession()` never returned a session as the reader would have believed from the reused-testing account). Fixed both: added `name="email"`, and the form now shows a real error message instead of a false "sent" state.
+
+Verified end-to-end in a real browser session (not just curl): single-block selection shows the "+ Add comment" bubble; cross-paragraph selection shows the "select within a single paragraph" hint instead; the popover correctly branches to compose / sign-in / "finish your profile" based on live session state; posting a comment renders its highlight, bottom-list entry, and margin avatar immediately; clicking "Go to source" flashes the highlight, clicking the avatar or (on mobile) tapping the highlight flashes the matching list entry; an orphaned or mismatched anchor renders no highlight and shows "Original passage no longer available" instead of a broken button, without crashing; an `<img onerror=...>` payload in a comment body round-trips as escaped, inert text; the full "select while logged out → sign in → click the real magic-link verify URL → land back on the same post → composer reopens pre-filled → submit" round trip works end-to-end.
 
 **Tasks**
 
@@ -132,14 +190,20 @@ Selection-based anchoring needs a stable coordinate system that survives re-rend
 
 **Acceptance criteria**
 
-- Selecting text within a single paragraph shows the "Add comment" bubble; selecting across paragraphs does not.
-- A logged-out user who starts a comment is walked through login and their draft survives the round trip.
-- On desktop, avatars appear in the right margin aligned to their highlighted text; on mobile, the margin column is absent and highlights are tap-to-jump instead.
-- The bottom list is sorted oldest → newest and "Go to source" scrolls to and flashes the right span.
-- A comment whose source text was edited out of the post still appears in the bottom list with source-navigation disabled, and does not crash the page.
-- An XSS payload (`<script>`, `<img onerror=...>`) in a comment body or name renders as inert text.
+- ✅ Selecting text within a single paragraph shows the "Add comment" bubble; selecting across paragraphs does not.
+- ✅🟡 A logged-out user who starts a comment is walked through login and their draft survives the round trip. *(verified for email; Telegram not built yet)*
+- ✅ On desktop, avatars appear in the right margin aligned to their highlighted text; on mobile, the margin column is absent and highlights are tap-to-jump instead.
+- ✅ The bottom list is sorted oldest → newest and "Go to source" scrolls to and flashes the right span.
+- ✅ A comment whose source text was edited out of the post still appears in the bottom list with source-navigation disabled, and does not crash the page.
+- ✅ An XSS payload (`<script>`, `<img onerror=...>`) in a comment body or name renders as inert text.
 
 ## 9. Sub-phase E — Moderation
+
+**Status: done and tested (2026-07-22).**
+
+Tasks 1 (`ADMIN_USER_IDS` allowlist) and 3 (rate limiting) actually landed already in sub-phase C, since `DELETE /api/comments/:id` needed the admin concept for its own authorization before this sub-phase started — see [`src/lib/admin.ts`](src/lib/admin.ts) and the sub-phase C status note. Only task 2 was new here: [`src/pages/admin/comments.astro`](src/pages/admin/comments.astro) — server-rendered (direct Drizzle query in frontmatter, no separate list API needed), redirects non-admins to `/`, lists every comment regardless of status with Hide/Unhide and Delete buttons that call the sub-phase C `PATCH`/`DELETE` routes.
+
+Verified in the real browser as the admin test account: the page lists both test comments; clicking Hide flips status to `hidden` and the comment immediately disappears from `GET /api/comments`; Delete removes it entirely. A non-admin session and a fully unauthenticated request both get redirected to `/` (302) rather than seeing the page.
 
 **Tasks**
 
@@ -149,9 +213,9 @@ Selection-based anchoring needs a stable coordinate system that survives re-rend
 
 **Acceptance criteria**
 
-- Non-admins get a 403/redirect on `/admin/comments`.
-- Admin can hide/delete any comment; hidden comments stop appearing in `GET /api/comments` and disappear from both the margin and bottom list on next fetch.
-- Rapid repeated posting from one account is blocked after the configured threshold.
+- ✅ Non-admins get a 403/redirect on `/admin/comments`.
+- ✅ Admin can hide/delete any comment; hidden comments stop appearing in `GET /api/comments` and disappear from both the margin and bottom list on next fetch.
+- ✅ Rapid repeated posting from one account is blocked after the configured threshold. *(verified in sub-phase C: 6 rapid posts → first 5 succeed, 6th+ get 429)*
 
 ## 10. Risks & decision rules
 
@@ -167,5 +231,5 @@ Selection-based anchoring needs a stable coordinate system that survives re-rend
 - Replies/threading (flat comments only — see §2).
 - Reactions/likes on comments.
 - In-CMS or hosted photo upload (paste-a-URL only, same as audio).
-- Editing/deleting your own comment after posting (only admin hide/delete in v1).
+- Editing your own comment after posting (still not supported). Deleting your own comment **is** now supported at the API level (`DELETE /api/comments/:id`, resolved 2026-08-06 — see §7) — this bullet originally said otherwise before that decision. No UI button for it yet, though: the bottom list (§8) doesn't currently show a delete affordance on your own comments, only admins get one via `/admin/comments`.
 - Overlapping/nested highlights spanning the same text from multiple comments beyond simple vertical stacking of avatars.

@@ -1,0 +1,525 @@
+---
+interface Props {
+  slug: string;
+  lang: string;
+}
+const { slug, lang } = Astro.props;
+---
+
+<section
+  id="comments-section"
+  class="mt-12 border-t border-zinc-200 pt-10 dark:border-zinc-700/50"
+  data-slug={slug}
+  data-lang={lang}
+>
+  <h2 class="gradient-text text-xl font-bold tracking-tight">Comments</h2>
+  <p id="comments-empty" class="mt-4 hidden text-sm text-zinc-400 dark:text-zinc-500">
+    No comments yet — select any text above to leave the first one.
+  </p>
+  <ol id="comments-list" class="mt-6 flex flex-col gap-6"></ol>
+</section>
+
+<button
+  id="comment-bubble"
+  type="button"
+  class="fixed z-40 hidden items-center gap-1.5 rounded-full bg-gradient-to-r from-grad-from to-grad-to px-3 py-1.5 text-xs font-semibold text-white shadow-lg transition hover:opacity-90"
+>
+  + Add comment
+</button>
+
+<p
+  id="comment-hint"
+  class="fixed z-40 hidden rounded-full bg-zinc-800 px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-zinc-700"
+>
+  Select within a single paragraph
+</p>
+
+<div
+  id="comment-popover"
+  class="fixed z-40 hidden w-80 rounded-2xl bg-white p-4 shadow-xl ring-1 shadow-zinc-800/10 ring-zinc-900/10 dark:border dark:border-zinc-700/50 dark:bg-zinc-800 dark:ring-0"
+>
+  <p
+    id="comment-popover-quote"
+    class="mb-3 line-clamp-2 border-l-2 border-grad-from pl-2 text-xs text-zinc-500 italic dark:text-zinc-400"
+  >
+  </p>
+
+  <div id="comment-popover-compose">
+    <textarea
+      id="comment-popover-textarea"
+      rows="3"
+      maxlength="2000"
+      placeholder="Add a comment…"
+      class="w-full resize-none rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800 outline-none focus:border-grad-from dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+    ></textarea>
+    <p id="comment-popover-error" class="mt-2 hidden text-xs text-red-600"></p>
+    <div class="mt-3 flex justify-end gap-2">
+      <button
+        type="button"
+        id="comment-popover-cancel"
+        class="rounded-full px-3 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        id="comment-popover-submit"
+        class="rounded-full bg-gradient-to-r from-grad-from to-grad-to px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+      >
+        Post
+      </button>
+    </div>
+  </div>
+
+  <div id="comment-popover-login" class="hidden">
+    <p class="mb-2 text-xs text-zinc-500 dark:text-zinc-400">Sign in to leave a comment.</p>
+    <form id="comment-popover-login-form" class="flex items-center gap-2">
+      <input
+        type="email"
+        name="email"
+        required
+        placeholder="you@example.com"
+        class="min-w-0 flex-1 rounded-full border border-zinc-200 px-3 py-1.5 text-xs text-zinc-800 outline-none focus:border-grad-from dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+      />
+      <button
+        type="submit"
+        class="rounded-full bg-gradient-to-r from-grad-from to-grad-to px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+      >
+        Go
+      </button>
+    </form>
+    <p id="comment-popover-login-sent" class="mt-2 hidden text-xs text-zinc-500 dark:text-zinc-400">
+      Check your inbox for a sign-in link — your draft will be waiting.
+    </p>
+    <p id="comment-popover-login-error" class="mt-2 hidden text-xs text-red-600"></p>
+  </div>
+
+  <div id="comment-popover-incomplete" class="hidden text-xs text-zinc-500 dark:text-zinc-400">
+    <a id="comment-popover-incomplete-link" href="/welcome" class="gradient-text font-semibold">
+      Finish setting up your profile to comment →
+    </a>
+  </div>
+</div>
+
+<script>
+  import { authClient } from '../lib/auth-client';
+  import { resolveAnchor, type AnchorQuery } from '../lib/anchor';
+  import { captureSelection, type CapturedSelection } from '../lib/selection';
+  import { relativeDate } from '../lib/format';
+
+  interface Author {
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+  }
+  interface CommentDTO {
+    id: string;
+    blockIndex: number;
+    anchorExact: string;
+    anchorPrefix: string | null;
+    anchorSuffix: string | null;
+    anchorOffsetHint: number | null;
+    body: string;
+    createdAt: string;
+    author: Author;
+  }
+
+  const section = document.getElementById('comments-section')!;
+  const slug = section.dataset.slug!;
+  const lang = section.dataset.lang!;
+  const proseEl = document.querySelector('.prose')!;
+  const listEl = document.getElementById('comments-list')!;
+  const emptyEl = document.getElementById('comments-empty')!;
+
+  const bubble = document.getElementById('comment-bubble')!;
+  const hintEl = document.getElementById('comment-hint')!;
+  const popover = document.getElementById('comment-popover')!;
+  const popoverQuote = document.getElementById('comment-popover-quote')!;
+  const composeEl = document.getElementById('comment-popover-compose')!;
+  const textarea = document.getElementById('comment-popover-textarea') as HTMLTextAreaElement;
+  const errorEl = document.getElementById('comment-popover-error')!;
+  const submitBtn = document.getElementById('comment-popover-submit') as HTMLButtonElement;
+  const cancelBtn = document.getElementById('comment-popover-cancel')!;
+  const loginEl = document.getElementById('comment-popover-login')!;
+  const loginForm = document.getElementById('comment-popover-login-form') as HTMLFormElement;
+  const loginSentEl = document.getElementById('comment-popover-login-sent')!;
+  const loginErrorEl = document.getElementById('comment-popover-login-error')!;
+  const incompleteEl = document.getElementById('comment-popover-incomplete')!;
+  const incompleteLink = document.getElementById('comment-popover-incomplete-link') as HTMLAnchorElement;
+
+  const marginColumn = document.createElement('div');
+  marginColumn.id = 'comment-margin-column';
+  marginColumn.className = 'hidden lg:block';
+  document.body.appendChild(marginColumn);
+
+  let resolved: { comment: CommentDTO; mark: HTMLElement }[] = [];
+  let activeCapture: CapturedSelection | null = null;
+  let activeRange: Range | null = null;
+  const DRAFT_KEY = 'pending-comment-draft';
+
+  function currentPath() {
+    return window.location.pathname + window.location.search;
+  }
+
+  function authorName(author: Author) {
+    return `${author.firstName ?? ''} ${author.lastName ?? ''}`.trim() || 'Anonymous';
+  }
+
+  function goToSource(commentId: string) {
+    const mark = proseEl.querySelector<HTMLElement>(`mark[data-comment-id="${commentId}"]`);
+    if (!mark) return;
+    mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    mark.classList.add('comment-flash');
+    setTimeout(() => mark.classList.remove('comment-flash'), 1500);
+  }
+
+  function goToListItem(commentId: string) {
+    const li = listEl.querySelector<HTMLElement>(`li[data-comment-id="${commentId}"]`);
+    if (!li) return;
+    li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    li.classList.add('comment-flash');
+    setTimeout(() => li.classList.remove('comment-flash'), 1500);
+  }
+
+  function buildListItem(c: CommentDTO, hasSource: boolean): HTMLLIElement {
+    const li = document.createElement('li');
+    li.dataset.commentId = c.id;
+    li.className = 'scroll-mt-24 flex gap-3 rounded-xl p-1';
+
+    const img = document.createElement('img');
+    img.src = c.author.avatarUrl || '';
+    img.alt = '';
+    img.loading = 'lazy';
+    img.referrerPolicy = 'no-referrer';
+    img.className = 'h-9 w-9 flex-none rounded-full bg-zinc-100 object-cover dark:bg-zinc-700';
+
+    const col = document.createElement('div');
+    col.className = 'min-w-0 flex-1';
+
+    const meta = document.createElement('div');
+    meta.className = 'flex flex-wrap items-baseline gap-x-2';
+    const name = document.createElement('strong');
+    name.className = 'text-sm text-zinc-800 dark:text-zinc-200';
+    name.textContent = authorName(c.author);
+    const date = document.createElement('span');
+    date.className = 'text-xs text-zinc-400 dark:text-zinc-500';
+    date.textContent = relativeDate(c.createdAt);
+    meta.append(name, date);
+
+    const body = document.createElement('p');
+    body.className = 'mt-1 text-sm whitespace-pre-wrap text-zinc-600 dark:text-zinc-400';
+    body.textContent = c.body;
+
+    col.append(meta, body);
+
+    if (hasSource) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'gradient-text mt-1.5 text-xs font-semibold hover:opacity-80';
+      btn.textContent = 'Go to source →';
+      btn.addEventListener('click', () => goToSource(c.id));
+      col.appendChild(btn);
+    } else {
+      const note = document.createElement('p');
+      note.className = 'mt-1.5 text-xs text-zinc-400 italic dark:text-zinc-500';
+      note.textContent = 'Original passage no longer available.';
+      col.appendChild(note);
+    }
+
+    li.append(img, col);
+    return li;
+  }
+
+  function positionMarginAvatars() {
+    if (window.innerWidth < 1024 || resolved.length === 0) {
+      marginColumn.replaceChildren();
+      return;
+    }
+    const proseRect = proseEl.getBoundingClientRect();
+    marginColumn.style.left = `${proseRect.right + window.scrollX + 24}px`;
+
+    const placements = resolved.map((r) => ({
+      r,
+      top: r.mark.getBoundingClientRect().top + window.scrollY,
+    }));
+    placements.sort((a, b) => a.top - b.top);
+
+    const AVATAR_SIZE = 32;
+    const GAP = 6;
+    let prevBottom = -Infinity;
+    for (const p of placements) {
+      p.top = Math.max(p.top, prevBottom + GAP);
+      prevBottom = p.top + AVATAR_SIZE;
+    }
+
+    marginColumn.replaceChildren();
+    for (const p of placements) {
+      const { comment: c, mark } = p.r;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'comment-avatar-btn';
+      btn.style.top = `${p.top}px`;
+      btn.title = authorName(c.author);
+      btn.addEventListener('click', () => goToListItem(c.id));
+      const img = document.createElement('img');
+      img.src = c.author.avatarUrl || '';
+      img.alt = '';
+      img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
+      btn.appendChild(img);
+      marginColumn.appendChild(btn);
+      void mark; // referenced via closure for its bounding rect above
+    }
+  }
+
+  async function loadComments() {
+    const res = await fetch(`/api/comments?slug=${encodeURIComponent(slug)}&lang=${encodeURIComponent(lang)}`);
+    if (!res.ok) return;
+    const comments: CommentDTO[] = await res.json();
+
+    // Unwrap any highlights from a previous render (e.g. after posting a new comment).
+    proseEl.querySelectorAll('mark.comment-highlight').forEach((m) => {
+      const parent = m.parentNode!;
+      while (m.firstChild) parent.insertBefore(m.firstChild, m);
+      parent.removeChild(m);
+      parent.normalize();
+    });
+
+    listEl.replaceChildren();
+    emptyEl.classList.toggle('hidden', comments.length > 0);
+    resolved = [];
+
+    for (const c of comments) {
+      const query: AnchorQuery = {
+        blockIndex: c.blockIndex,
+        exact: c.anchorExact,
+        prefix: c.anchorPrefix,
+        suffix: c.anchorSuffix,
+        offsetHint: c.anchorOffsetHint,
+      };
+      const range = resolveAnchor(proseEl, query);
+
+      let mark: HTMLElement | null = null;
+      if (range) {
+        mark = document.createElement('mark');
+        mark.className = 'comment-highlight';
+        mark.dataset.commentId = c.id;
+        mark.addEventListener('click', () => goToListItem(c.id));
+        try {
+          range.surroundContents(mark);
+        } catch {
+          // Range straddles a partial element boundary (nested inline markup) that
+          // surroundContents can't wrap — degrade to "no highlight" per R3, comment
+          // still appears in the list below.
+          mark = null;
+        }
+      }
+
+      if (mark) resolved.push({ comment: c, mark });
+      listEl.appendChild(buildListItem(c, !!mark));
+    }
+
+    positionMarginAvatars();
+  }
+
+  function hideBubble() {
+    bubble.classList.add('hidden');
+    bubble.classList.remove('flex');
+  }
+  function hideHint() {
+    hintEl.classList.add('hidden');
+  }
+
+  function positionFloating(el: HTMLElement, rect: DOMRect, offsetAbove = 0) {
+    el.style.top = `${Math.min(window.innerHeight - 20, rect.bottom + 8)}px`;
+    el.style.left = `${Math.min(window.innerWidth - 20 - el.offsetWidth, Math.max(8, rect.left))}px`;
+    if (offsetAbove) el.style.top = `${rect.top - offsetAbove}px`;
+  }
+
+  function handleSelectionChange() {
+    if (!popover.classList.contains('hidden')) return; // don't fight an open composer
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      hideBubble();
+      hideHint();
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    if (!proseEl.contains(range.commonAncestorContainer)) {
+      hideBubble();
+      hideHint();
+      return;
+    }
+
+    const captured = captureSelection(proseEl);
+    if (captured) {
+      hideHint();
+      activeCapture = captured;
+      activeRange = range.cloneRange();
+      const rect = range.getBoundingClientRect();
+      bubble.classList.remove('hidden');
+      bubble.classList.add('flex');
+      positionFloating(bubble, rect, 40);
+    } else {
+      hideBubble();
+      const rect = range.getBoundingClientRect();
+      hintEl.classList.remove('hidden');
+      positionFloating(hintEl, rect, 36);
+    }
+  }
+
+  document.addEventListener('selectionchange', handleSelectionChange);
+
+  async function openComposer(capture: CapturedSelection, rect: DOMRect, prefillBody = '') {
+    activeCapture = capture;
+    hideBubble();
+    hideHint();
+    popoverQuote.textContent = capture.exact;
+    textarea.value = prefillBody;
+    errorEl.classList.add('hidden');
+    loginSentEl.classList.add('hidden');
+
+    const { data } = await authClient.getSession();
+    if (!data) {
+      composeEl.classList.add('hidden');
+      incompleteEl.classList.add('hidden');
+      loginEl.classList.remove('hidden');
+    } else if (!data.user.profileComplete) {
+      composeEl.classList.add('hidden');
+      loginEl.classList.add('hidden');
+      incompleteEl.classList.remove('hidden');
+      incompleteLink.href = `/welcome?next=${encodeURIComponent(currentPath())}`;
+    } else {
+      loginEl.classList.add('hidden');
+      incompleteEl.classList.add('hidden');
+      composeEl.classList.remove('hidden');
+    }
+
+    popover.classList.remove('hidden');
+    positionFloating(popover, rect);
+    if (!composeEl.classList.contains('hidden')) textarea.focus();
+  }
+
+  function closePopover() {
+    popover.classList.add('hidden');
+    activeCapture = null;
+    activeRange = null;
+    window.getSelection()?.removeAllRanges();
+  }
+
+  bubble.addEventListener('click', () => {
+    if (!activeCapture || !activeRange) return;
+    openComposer(activeCapture, activeRange.getBoundingClientRect());
+  });
+
+  cancelBtn.addEventListener('click', closePopover);
+
+  document.addEventListener('mousedown', (e) => {
+    const target = e.target as Node;
+    if (popover.classList.contains('hidden')) return;
+    if (popover.contains(target) || bubble.contains(target)) return;
+    closePopover();
+  });
+
+  submitBtn.addEventListener('click', async () => {
+    if (!activeCapture) return;
+    const body = textarea.value.trim();
+    if (!body) {
+      errorEl.textContent = 'Comment can\'t be empty.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    submitBtn.disabled = true;
+    errorEl.classList.add('hidden');
+
+    const res = await fetch('/api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slug,
+        lang,
+        blockIndex: activeCapture.blockIndex,
+        anchorExact: activeCapture.exact,
+        anchorPrefix: activeCapture.prefix,
+        anchorSuffix: activeCapture.suffix,
+        anchorOffsetHint: activeCapture.offsetHint,
+        body,
+      }),
+    });
+
+    submitBtn.disabled = false;
+
+    if (res.status === 401 || res.status === 403) {
+      openComposer(activeCapture, popover.getBoundingClientRect(), body);
+      return;
+    }
+    if (!res.ok) {
+      errorEl.textContent = 'Something went wrong — please try again.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    closePopover();
+    await loadComments();
+  });
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!activeCapture) return;
+    const email = String(new FormData(loginForm).get('email') || '');
+    const next = currentPath();
+    loginErrorEl.classList.add('hidden');
+
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ slug, lang, ...activeCapture, body: textarea.value, path: next })
+    );
+
+    const submitEl = loginForm.querySelector('button[type="submit"]') as HTMLButtonElement;
+    submitEl.disabled = true;
+    const { error } = await authClient.signIn.magicLink({
+      email,
+      callbackURL: next,
+      newUserCallbackURL: `/welcome?next=${encodeURIComponent(next)}`,
+    });
+    submitEl.disabled = false;
+
+    if (error) {
+      localStorage.removeItem(DRAFT_KEY);
+      loginErrorEl.textContent = 'Could not send the link — please try again.';
+      loginErrorEl.classList.remove('hidden');
+      return;
+    }
+    loginForm.classList.add('hidden');
+    loginSentEl.classList.remove('hidden');
+  });
+
+  async function restoreDraft() {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    localStorage.removeItem(DRAFT_KEY);
+
+    let draft: (CapturedSelection & { slug: string; lang: string; body: string; path: string }) | null = null;
+    try {
+      draft = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    if (!draft || draft.slug !== slug || draft.lang !== lang || draft.path !== currentPath()) return;
+
+    const { data } = await authClient.getSession();
+    if (!data) return; // still not signed in — nothing to resume yet
+
+    const range = resolveAnchor(proseEl, draft);
+    const rect = range ? range.getBoundingClientRect() : proseEl.getBoundingClientRect();
+    await openComposer(
+      { blockIndex: draft.blockIndex, exact: draft.exact, prefix: draft.prefix, suffix: draft.suffix, offsetHint: draft.offsetHint },
+      rect,
+      draft.body
+    );
+  }
+
+  window.addEventListener('resize', positionMarginAvatars);
+
+  loadComments().then(restoreDraft);
+</script>
