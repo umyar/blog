@@ -1,0 +1,137 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AvatarField from '../components/AvatarField.astro';
+import { auth } from '../lib/auth';
+import { readerTag } from '../lib/avatar';
+
+export const prerender = false;
+
+const session = await auth.api.getSession({ headers: Astro.request.headers });
+if (!session) {
+  return Astro.redirect(`/signin?next=${encodeURIComponent('/profile')}`);
+}
+
+// `name` and `image` are Better Auth's own field names for what the database
+// stores as first_name and avatar_url (lib/auth.ts §4.1).
+const { id, email, name, image, lastName, userNumber } = session.user;
+---
+
+<BaseLayout title="Your profile — umyar blog" description="Edit your name and photo.">
+  <div class="mx-auto mt-16 w-full max-w-7xl px-6 sm:px-14 lg:px-24">
+    <div class="mx-auto max-w-md">
+      <div
+        class="rounded-2xl bg-white p-8 shadow-md ring-1 shadow-zinc-800/5 ring-zinc-900/5 dark:border dark:border-zinc-700/50 dark:bg-zinc-800 dark:ring-0"
+      >
+        <h1 class="gradient-text text-2xl font-bold tracking-tight">Your profile</h1>
+        <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          {email} · <span class="font-medium text-zinc-600 dark:text-zinc-300">{readerTag(userNumber)}</span>
+        </p>
+        <p class="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+          Your reader number is assigned once and never changes — it's what tells you apart from
+          anyone else with the same name.
+        </p>
+
+        <form
+          id="profile-form"
+          class="mt-6 flex flex-col gap-4"
+          data-user-id={id}
+          data-email={email}
+        >
+          <div class="flex gap-3">
+            <label class="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              First name
+              <input
+                name="firstName"
+                type="text"
+                required
+                maxlength="60"
+                value={name ?? ''}
+                class="auth-input"
+              />
+            </label>
+            <label class="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Last name
+              <input
+                name="lastName"
+                type="text"
+                required
+                maxlength="60"
+                value={lastName ?? ''}
+                class="auth-input"
+              />
+            </label>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Photo</span>
+            <AvatarField />
+          </div>
+
+          <p class="hidden text-sm text-red-600" id="profile-error"></p>
+          <p class="hidden text-sm text-green-600" id="profile-saved">Saved.</p>
+          <button type="submit" class="auth-submit mt-2">Save changes</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ initialImage: image ?? '' }}>
+  window.__profileInitialImage = initialImage;
+</script>
+
+<script>
+  import { initAvatarField } from '../lib/avatar-field';
+
+  const form = document.getElementById('profile-form') as HTMLFormElement;
+  const errorEl = document.getElementById('profile-error')!;
+  const savedEl = document.getElementById('profile-saved')!;
+
+  const field = initAvatarField(form.querySelector<HTMLElement>('[data-avatar-field]')!);
+  const urlInput = form.querySelector<HTMLInputElement>('[data-avatar-url]')!;
+  urlInput.value = (window as any).__profileInitialImage || '';
+
+  const firstInput = form.elements.namedItem('firstName') as HTMLInputElement;
+  const lastInput = form.elements.namedItem('lastName') as HTMLInputElement;
+
+  function syncIdentity() {
+    field.setIdentity({
+      id: form.dataset.userId!,
+      firstName: firstInput.value,
+      lastName: lastInput.value,
+      email: form.dataset.email!,
+    });
+  }
+  // Keeps the monogram preview honest while the reader is still typing a name.
+  firstInput.addEventListener('input', syncIdentity);
+  lastInput.addEventListener('input', syncIdentity);
+  syncIdentity();
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl.classList.add('hidden');
+    savedEl.classList.add('hidden');
+
+    const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    submitBtn.disabled = true;
+
+    const res = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firstName: firstInput.value.trim(),
+        lastName: lastInput.value.trim(),
+        avatarUrl: field.getUrl(),
+      }),
+    });
+
+    submitBtn.disabled = false;
+
+    if (!res.ok) {
+      errorEl.textContent = 'Please check the fields and try again.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    savedEl.classList.remove('hidden');
+  });
+</script>

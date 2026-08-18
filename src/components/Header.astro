@@ -1,14 +1,18 @@
 ---
 import ThemeToggle from './ThemeToggle.astro';
+import AuthMenu from './AuthMenu.astro';
 
+// `paths` lists the local routes an item owns — "Blog" stays lit on article pages too.
+// External items own nothing, so they never highlight.
 const navItems = [
-  { href: '/', label: 'Blog' },
-  { href: 'https://umyar.com', label: 'About' },
+  { href: '/', label: 'Blog', paths: ['/', '/posts'] },
+  { href: 'https://umyar.com', label: 'About', paths: [] },
 ];
 
-const path = Astro.url.pathname;
-const isActive = (href: string) =>
-  href === '/' ? path === '/' : path.startsWith(href);
+// Trailing slash varies between dev and the built pages (`/posts/en/slug/`).
+const path = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const isActive = (paths: string[]) =>
+  paths.some((p) => (p === '/' ? path === '/' : path === p || path.startsWith(`${p}/`)));
 ---
 
 <header class="pt-6 pb-2">
@@ -48,13 +52,13 @@ const isActive = (href: string) =>
                 href={item.href}
                 class:list={[
                   'relative block px-3 py-2 transition',
-                  isActive(item.href)
+                  isActive(item.paths)
                     ? 'gradient-text'
                     : 'hover:text-zinc-900 dark:hover:text-zinc-100',
                 ]}
               >
                 {item.label}
-                {isActive(item.href) && (
+                {isActive(item.paths) && (
                   <span class="absolute inset-x-1 -bottom-px h-px bg-gradient-to-r from-grad-from to-grad-to" />
                 )}
               </a>
@@ -64,8 +68,9 @@ const isActive = (href: string) =>
       </ul>
     </nav>
 
-    <!-- Theme toggle (right) -->
-    <div class="flex flex-1 justify-end">
+    <!-- Identity + theme toggle (right) -->
+    <div class="flex flex-1 items-center justify-end gap-2">
+      <AuthMenu />
       <ThemeToggle />
     </div>
   </div>

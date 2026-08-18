@@ -69,6 +69,66 @@ body {
   color: var(--color-grad-to);
 }
 
+/* Sign-in dialog (COMMENTS_V2.md §3). A native <dialog> in the top layer, so it
+   needs no z-index and can't be trapped by an ancestor's stacking context — but
+   it also gets UA defaults (border, fixed max sizes) that have to be undone. */
+.auth-dialog {
+  width: calc(100vw - 2rem);
+  max-width: 26rem;
+  /* Explicit, not inherited: Tailwind's preflight zeroes every element's margin,
+     which kills the UA `margin: auto` that centres a modal <dialog>. */
+  margin: auto;
+  padding: 0;
+  border: none;
+  border-radius: 1rem;
+  background: transparent;
+  color: inherit;
+  overflow: visible;
+}
+.auth-dialog::backdrop {
+  background: rgb(24 24 27 / 0.45);
+  backdrop-filter: blur(2px);
+}
+.auth-dialog > div {
+  @apply rounded-2xl bg-white shadow-xl ring-1 shadow-zinc-800/10 ring-zinc-900/10;
+}
+.dark .auth-dialog > div {
+  @apply border border-zinc-700/50 bg-zinc-800 ring-0;
+}
+.dark .auth-dialog::backdrop {
+  background: rgb(0 0 0 / 0.65);
+}
+
+@utility auth-input {
+  @apply rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800 outline-none;
+  @apply focus:border-grad-from dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100;
+}
+@utility auth-submit {
+  @apply rounded-full bg-gradient-to-r from-grad-from to-grad-to px-4 py-2 text-sm font-semibold text-white transition;
+  @apply hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60;
+}
+/* The code is the one field people re-type from a notification preview, so it
+   gets the same treatment as in the email: big, monospaced, well-tracked. */
+@utility auth-code-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.5rem;
+  letter-spacing: 0.5em;
+  text-align: center;
+  text-indent: 0.5em; /* re-centres the run: tracking adds a gap after the last glyph */
+  padding-block: 0.5rem;
+}
+
+/* Header identity control — same floating pill as ThemeToggle so the two read as
+   one cluster on the right. */
+@utility auth-menu-pill {
+  @apply rounded-full bg-white/90 text-zinc-800 shadow-lg ring-1 shadow-zinc-800/5 ring-zinc-900/5 backdrop-blur transition;
+  @apply hover:ring-zinc-900/10 dark:bg-zinc-800/90 dark:text-zinc-200 dark:ring-white/10 dark:hover:ring-white/20;
+}
+@utility auth-menu-item {
+  @apply block w-full rounded-xl px-3 py-2 text-left text-sm text-zinc-700 transition;
+  @apply hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700/50;
+}
+
 /* Comments (COMMENTS.md §8) — highlighted quoted spans, the margin avatar column
    (portal-appended to <body> at runtime, positioned in document coordinates so it
    doesn't need a scroll listener), and the shared "go to source / go to comment"
@@ -86,10 +146,127 @@ body {
   border-bottom-color: var(--color-grad-to);
 }
 
+/* At >=2xl the container (max-w-7xl, 1280px) leaves 208px each side of the
+   672px prose column — measured, and too tight for a readable card. Sliding the
+   column to a fixed 96px from the left turns that into 320px on the right,
+   which is what the cards need. Confined to 2xl on purpose: below it the margin
+   holds bare avatars and the centred column is correct. */
+@media (min-width: 1536px) {
+  .post-column {
+    margin-left: 6rem;
+    margin-right: auto;
+  }
+}
+
 #comment-margin-column {
   position: absolute;
   top: 0;
   width: 32px;
+}
+/* Widened only when it holds cards; the avatar column stays 32px. */
+#comment-margin-column.is-cards {
+  width: 320px;
+}
+
+.comment-margin-card {
+  position: absolute;
+  left: 0;
+  width: 320px;
+  padding: 0.75rem;
+  border: 1px solid var(--color-zinc-200);
+  border-radius: 0.75rem;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+.dark .comment-margin-card {
+  background: var(--color-zinc-800);
+  border-color: color-mix(in srgb, var(--color-zinc-700) 50%, transparent);
+}
+.comment-margin-card:hover,
+.comment-margin-card.is-active {
+  border-color: var(--color-grad-from);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.08);
+}
+.comment-margin-card-body {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+/* Two-way hover sync (COMMENTS_V2.md §7.3): hovering any one surface for a
+   comment strengthens the other two, which is what makes the pairing legible. */
+.prose mark.comment-highlight.is-active {
+  background: color-mix(in srgb, var(--color-grad-from) 34%, transparent);
+}
+.dark .prose mark.comment-highlight.is-active {
+  background: color-mix(in srgb, var(--color-grad-to) 42%, transparent);
+}
+#comments-list li.is-active {
+  background: color-mix(in srgb, var(--color-grad-from) 7%, transparent);
+}
+
+/* Likes (COMMENTS_V2.md §8). The heart and the count are separate controls —
+   the heart toggles, the count opens the who-liked popover. */
+.comment-like-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.875rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-zinc-300);
+  transition: color 0.15s ease;
+}
+.dark .comment-like-btn {
+  color: var(--color-zinc-600);
+}
+.comment-like-btn:hover {
+  color: var(--color-grad-from);
+}
+.comment-like-btn.is-liked,
+.dark .comment-like-btn.is-liked {
+  color: var(--color-grad-from);
+}
+.comment-like-count {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--color-zinc-400);
+}
+.comment-like-count:hover {
+  color: var(--color-zinc-700);
+}
+.dark .comment-like-count:hover {
+  color: var(--color-zinc-200);
+}
+
+.comment-sort-btn {
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  cursor: pointer;
+  color: var(--color-zinc-400);
+}
+.comment-sort-btn.is-active {
+  background: color-mix(in srgb, var(--color-grad-from) 12%, transparent);
+  color: var(--color-grad-from);
+  font-weight: 600;
+}
+
+/* Read-in-place popover. On coarse pointers JS re-lays it out as a bottom sheet
+   (inline styles) and adds .is-sheet for the squared-off bottom corners. */
+#comment-read.is-sheet {
+  border-radius: 1rem 1rem 0 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
 }
 .comment-avatar-btn {
   position: absolute;
@@ -110,6 +287,20 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* On touch, the selection controls dock to a viewport edge instead of sitting next to
+   the selection, where the OS menu would cover them (see CommentsSection.astro) — so
+   give the docked pill a thumb-sized hit area and keep the composer off narrow edges. */
+@media (pointer: coarse) {
+  #comment-bubble,
+  #comment-hint {
+    padding: 0.625rem 1.125rem;
+    font-size: 0.875rem;
+  }
+  #comment-popover {
+    max-width: calc(100vw - 2rem);
+  }
 }
 
 @keyframes comment-flash {

@@ -61,7 +61,11 @@ const formattedDate = date
   </Fragment>
 
   <div class="mx-auto mt-16 w-full max-w-7xl px-6 sm:px-14 lg:px-24">
-    <div class="mx-auto max-w-2xl">
+    <!-- `post-column` only does something at >=2xl, where it slides this column
+         left inside the container to open ~320px of margin for comment cards
+         (COMMENTS_V2.md §7.2). Below 2xl it is inert and the column stays
+         centred, so nothing outside that breakpoint moves. -->
+    <div class="post-column mx-auto max-w-2xl">
       <!-- Back button -->
       <a
         href="/"

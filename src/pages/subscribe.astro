@@ -1,0 +1,50 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Query-param driven, so it has to render per request.
+export const prerender = false;
+
+const states = {
+  confirmed: {
+    title: "You're in",
+    body: "You'll get one email whenever a new post goes up. Every one of them has an unsubscribe link at the bottom.",
+  },
+  unsubscribed: {
+    title: 'Unsubscribed',
+    body: "You won't get any more emails about new posts. No hard feelings — the RSS feed is always there.",
+  },
+  expired: {
+    title: 'That link expired',
+    body: 'Confirmation links are good for 24 hours. Enter your email again below and a fresh one will be on its way.',
+  },
+  invalid: {
+    title: "That link didn't work",
+    body: "It may have already been used, or the address behind it was removed. Subscribing again from the footer will sort it out.",
+  },
+} as const;
+
+type State = keyof typeof states;
+
+const raw = Astro.url.searchParams.get('state');
+const state: State = raw && raw in states ? (raw as State) : 'invalid';
+const { title, body } = states[state];
+---
+
+<BaseLayout title={`${title} — umyar blog`} description="Email subscription status.">
+  <div class="mx-auto mt-16 w-full max-w-7xl px-6 sm:px-14 lg:px-24">
+    <div class="mx-auto max-w-md">
+      <div
+        class="rounded-2xl bg-white p-8 shadow-md ring-1 shadow-zinc-800/5 ring-zinc-900/5 dark:border dark:border-zinc-700/50 dark:bg-zinc-800 dark:ring-0"
+      >
+        <h1 class="gradient-text text-2xl font-bold tracking-tight">{title}</h1>
+        <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{body}</p>
+        <a
+          href="/"
+          class="mt-6 inline-block rounded-full bg-gradient-to-r from-grad-from to-grad-to px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+        >
+          Back to the blog
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

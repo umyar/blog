@@ -1,0 +1,48 @@
+---
+// One control, three ways to fill it (COMMENTS_V2.md §4.3.4): pick a file, paste
+// a URL, or leave it blank for a monogram. Markup only — the behaviour is
+// initAvatarField() from lib/avatar-field.ts, so the dialog and /profile share it.
+interface Props {
+  compact?: boolean;
+}
+const { compact = false } = Astro.props;
+---
+
+<div data-avatar-field class="flex items-start gap-3">
+  <img
+    data-avatar-preview
+    alt=""
+    width="56"
+    height="56"
+    referrerpolicy="no-referrer"
+    class="h-14 w-14 flex-none rounded-full bg-zinc-100 object-cover dark:bg-zinc-700"
+  />
+
+  <div class="min-w-0 flex-1">
+    <input type="file" accept="image/*" data-avatar-file class="hidden" />
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        data-avatar-pick
+        class="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-400 hover:text-zinc-900 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500"
+      >
+        Upload a photo
+      </button>
+      <button
+        type="button"
+        data-avatar-remove
+        class="hidden text-xs text-zinc-400 transition hover:text-zinc-700 dark:hover:text-zinc-200"
+      >
+        Remove
+      </button>
+    </div>
+
+    <input
+      type="url"
+      data-avatar-url
+      placeholder="…or paste an image URL"
+      class:list={['auth-input mt-2 w-full', compact && 'text-xs']}
+    />
+    <p data-avatar-error class="mt-1.5 hidden text-xs text-red-600"></p>
+  </div>
+</div>

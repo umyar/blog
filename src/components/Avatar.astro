@@ -1,0 +1,25 @@
+---
+// Server-rendered avatar. The client-side equivalent is `avatarSrc()` from
+// lib/avatar.ts called directly — same function, same output, so a monogram
+// looks identical whether it was drawn at build time or in the browser.
+import { avatarSrc, displayName, type AvatarSubject } from '../lib/avatar';
+
+interface Props extends AvatarSubject {
+  size?: number;
+  class?: string;
+}
+
+const { size = 36, class: className = '', ...subject } = Astro.props;
+const src = avatarSrc(subject);
+---
+
+<img
+  src={src}
+  alt={displayName(subject.firstName, subject.lastName)}
+  width={size}
+  height={size}
+  loading="lazy"
+  referrerpolicy="no-referrer"
+  class:list={['flex-none rounded-full bg-zinc-100 object-cover dark:bg-zinc-700', className]}
+  style={`width:${size}px;height:${size}px`}
+/>

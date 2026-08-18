@@ -12,11 +12,76 @@ const { slug, lang } = Astro.props;
   data-slug={slug}
   data-lang={lang}
 >
-  <h2 class="gradient-text text-xl font-bold tracking-tight">Comments</h2>
-  <p id="comments-empty" class="mt-4 hidden text-sm text-zinc-400 dark:text-zinc-500">
-    No comments yet — select any text above to leave the first one.
+  <div class="flex flex-wrap items-baseline gap-x-2">
+    <h2 class="gradient-text text-xl font-bold tracking-tight">
+      Comments <span id="comments-count"></span>
+    </h2>
+    <!-- The "commenting needs an account" caption reader feedback asked for -->
+    <p id="comments-caption" class="hidden text-sm text-zinc-400 dark:text-zinc-500">
+      ·
+      <button type="button" id="comments-signin" class="gradient-text font-semibold hover:opacity-80">
+        Sign in to comment
+      </button>
+    </p>
+  </div>
+  <!-- Plain composer (COMMENTS_V2.md §6.5). Until phase 4 a comment could not
+       exist without a text selection; this is the box for everyone who just
+       wants to say something about the post as a whole. Same "type first,
+       authenticate at Post" flow as the anchored composer. -->
+  <div class="mt-6 flex gap-3" data-plain-composer>
+    <img
+      id="plain-composer-avatar"
+      alt=""
+      class="h-9 w-9 flex-none rounded-full bg-zinc-100 object-cover dark:bg-zinc-700"
+    />
+    <div class="min-w-0 flex-1">
+      <textarea
+        id="plain-composer-textarea"
+        rows="1"
+        maxlength="2000"
+        placeholder="Leave a comment…"
+        class="w-full resize-none rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800 outline-none transition focus:border-grad-from dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+      ></textarea>
+      <p id="plain-composer-error" class="mt-2 hidden text-xs text-red-600"></p>
+      <!-- Collapsed until the textarea is focused or has content, so the resting
+           state is a single quiet line rather than a form demanding attention. -->
+      <div id="plain-composer-actions" class="mt-2 hidden justify-end gap-2">
+        <button
+          type="button"
+          id="plain-composer-cancel"
+          class="rounded-full px-3 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          id="plain-composer-submit"
+          class="rounded-full bg-gradient-to-r from-grad-from to-grad-to px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+        >
+          Post
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <p id="comments-empty" class="mt-6 hidden text-sm text-zinc-400 dark:text-zinc-500">
+    No comments yet — leave the first one above, or select any passage in the post to comment on it
+    directly.
   </p>
+  <!-- Newest / Most liked (COMMENTS_V2.md §8.7). Hidden while there is nothing
+       to reorder. -->
+  <div id="comments-sort" class="mt-6 hidden items-center gap-1 text-xs">
+    <button type="button" data-sort="newest" class="comment-sort-btn">Newest</button>
+    <button type="button" data-sort="likes" class="comment-sort-btn">Most liked</button>
+  </div>
   <ol id="comments-list" class="mt-6 flex flex-col gap-6"></ol>
+  <!-- The reader's "last three or five" ask (COMMENTS_V2.md §7.5). Hidden while
+       the whole list already fits under the limit. -->
+  <button
+    type="button"
+    id="comments-showall"
+    class="gradient-text mt-6 hidden text-sm font-semibold hover:opacity-80"
+  ></button>
 </section>
 
 <button
@@ -71,34 +136,36 @@ const { slug, lang } = Astro.props;
     </div>
   </div>
 
-  <div id="comment-popover-login" class="hidden">
-    <p class="mb-2 text-xs text-zinc-500 dark:text-zinc-400">Sign in to leave a comment.</p>
-    <form id="comment-popover-login-form" class="flex items-center gap-2">
-      <input
-        type="email"
-        name="email"
-        required
-        placeholder="you@example.com"
-        class="min-w-0 flex-1 rounded-full border border-zinc-200 px-3 py-1.5 text-xs text-zinc-800 outline-none focus:border-grad-from dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-      />
-      <button
-        type="submit"
-        class="rounded-full bg-gradient-to-r from-grad-from to-grad-to px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
-      >
-        Go
-      </button>
-    </form>
-    <p id="comment-popover-login-sent" class="mt-2 hidden text-xs text-zinc-500 dark:text-zinc-400">
-      Check your inbox for a sign-in link — your draft will be waiting.
-    </p>
-    <p id="comment-popover-login-error" class="mt-2 hidden text-xs text-red-600"></p>
-  </div>
+  <!-- No sign-in form here any more: the composer always opens, and AuthDialog
+       is raised over it at Post if there's no session (COMMENTS_V2.md §3.4). -->
+</div>
 
-  <div id="comment-popover-incomplete" class="hidden text-xs text-zinc-500 dark:text-zinc-400">
-    <a id="comment-popover-incomplete-link" href="/welcome" class="gradient-text font-semibold">
-      Finish setting up your profile to comment →
-    </a>
-  </div>
+<!-- Read-in-place popover (COMMENTS_V2.md §7.1). Clicking a highlight used to
+     call goToListItem(), which scrolled to the bottom list and left the reader
+     to scroll back — the bouncing feedback #4 described. This puts the comment
+     where the reader already is; on coarse pointers JS turns it into a bottom
+     sheet rather than a popover pinned near the touch point. -->
+<!-- Who liked a comment (§8.6): avatars, names and reader numbers, nothing
+     clickable. Hover opens it on a mouse, tap on a touch screen. -->
+<div
+  id="comment-likers"
+  class="fixed z-50 hidden max-w-64 rounded-xl bg-white p-3 shadow-xl ring-1 shadow-zinc-800/10 ring-zinc-900/10 dark:border dark:border-zinc-700/50 dark:bg-zinc-800 dark:ring-0"
+>
+</div>
+
+<div
+  id="comment-read"
+  class="fixed z-40 hidden w-80 rounded-2xl bg-white p-4 shadow-xl ring-1 shadow-zinc-800/10 ring-zinc-900/10 dark:border dark:border-zinc-700/50 dark:bg-zinc-800 dark:ring-0"
+>
+  <button
+    type="button"
+    id="comment-read-close"
+    aria-label="Close"
+    class="absolute top-2 right-3 text-lg leading-none text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+  >
+    &times;
+  </button>
+  <div id="comment-read-body"></div>
 </div>
 
 <script>
@@ -106,16 +173,26 @@ const { slug, lang } = Astro.props;
   import { resolveAnchor, type AnchorQuery } from '../lib/anchor';
   import { captureSelection, type CapturedSelection } from '../lib/selection';
   import { relativeDate } from '../lib/format';
+  import { avatarSrc, displayName, monogramDataUri, readerTag } from '../lib/avatar';
 
   interface Author {
+    id: string;
+    userNumber: number | null;
     firstName: string | null;
     lastName: string | null;
     avatarUrl: string | null;
   }
   interface CommentDTO {
+    // Phase 6. `likers` is capped server-side at 12, with the remainder in
+    // `likerOverflow`, so the popover opens without a round trip (§8.3).
+    likeCount: number;
+    likedByMe: boolean;
+    likers: Author[];
+    likerOverflow: number;
+    // Null on both means a plain, whole-post comment (COMMENTS_V2.md §6.1).
+    blockIndex: number | null;
+    anchorExact: string | null;
     id: string;
-    blockIndex: number;
-    anchorExact: string;
     anchorPrefix: string | null;
     anchorSuffix: string | null;
     anchorOffsetHint: number | null;
@@ -124,12 +201,21 @@ const { slug, lang } = Astro.props;
     author: Author;
   }
 
+  // Three states, not two. Conflating `plain` with `orphaned` is the specific
+  // bug COMMENTS_V2.md §6.4 warns about: it would print "Original passage no
+  // longer available." under every plain comment, where it reads as an error
+  // about a passage the reader never chose.
+  type ListState = 'plain' | 'anchored' | 'orphaned';
+
   const section = document.getElementById('comments-section')!;
   const slug = section.dataset.slug!;
   const lang = section.dataset.lang!;
   const proseEl = document.querySelector('.prose')!;
   const listEl = document.getElementById('comments-list')!;
   const emptyEl = document.getElementById('comments-empty')!;
+  const countEl = document.getElementById('comments-count')!;
+  const captionEl = document.getElementById('comments-caption')!;
+  const captionBtn = document.getElementById('comments-signin')!;
 
   const bubble = document.getElementById('comment-bubble')!;
   const hintEl = document.getElementById('comment-hint')!;
@@ -140,29 +226,37 @@ const { slug, lang } = Astro.props;
   const errorEl = document.getElementById('comment-popover-error')!;
   const submitBtn = document.getElementById('comment-popover-submit') as HTMLButtonElement;
   const cancelBtn = document.getElementById('comment-popover-cancel')!;
-  const loginEl = document.getElementById('comment-popover-login')!;
-  const loginForm = document.getElementById('comment-popover-login-form') as HTMLFormElement;
-  const loginSentEl = document.getElementById('comment-popover-login-sent')!;
-  const loginErrorEl = document.getElementById('comment-popover-login-error')!;
-  const incompleteEl = document.getElementById('comment-popover-incomplete')!;
-  const incompleteLink = document.getElementById('comment-popover-incomplete-link') as HTMLAnchorElement;
-
+  const readEl = document.getElementById('comment-read')!;
+  const readBodyEl = document.getElementById('comment-read-body')!;
+  const readCloseBtn = document.getElementById('comment-read-close')!;
+  const showAllBtn = document.getElementById('comments-showall') as HTMLButtonElement;
+  const sortEl = document.getElementById('comments-sort')!;
+  const likersEl = document.getElementById('comment-likers')!;
   const marginColumn = document.createElement('div');
   marginColumn.id = 'comment-margin-column';
   marginColumn.className = 'hidden lg:block';
   document.body.appendChild(marginColumn);
 
+  // Below this the margin holds bare avatars; at or above it, full cards. The
+  // number is not arbitrary — it is where §7.2's measured 320px becomes available.
+  const CARD_BREAKPOINT = 1536;
+  // The reader asked for "the last three or five" rather than the whole list.
+  const LIST_LIMIT = 5;
+
   let resolved: { comment: CommentDTO; mark: HTMLElement }[] = [];
+  let allComments: CommentDTO[] = [];
+  const stateById = new Map<string, ListState>();
+  let listExpanded = false;
+  type SortMode = 'newest' | 'likes';
+  let sortMode: SortMode = 'newest';
+  // Who the reader is, cached from the session so an optimistic like can put
+  // them straight into the likers popover without refetching the page's comments.
+  let viewer: Author | null = null;
   let activeCapture: CapturedSelection | null = null;
   let activeRange: Range | null = null;
-  const DRAFT_KEY = 'pending-comment-draft';
-
-  function currentPath() {
-    return window.location.pathname + window.location.search;
-  }
 
   function authorName(author: Author) {
-    return `${author.firstName ?? ''} ${author.lastName ?? ''}`.trim() || 'Anonymous';
+    return displayName(author.firstName, author.lastName);
   }
 
   function goToSource(commentId: string) {
@@ -173,21 +267,242 @@ const { slug, lang } = Astro.props;
     setTimeout(() => mark.classList.remove('comment-flash'), 1500);
   }
 
-  function goToListItem(commentId: string) {
-    const li = listEl.querySelector<HTMLElement>(`li[data-comment-id="${commentId}"]`);
-    if (!li) return;
-    li.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    li.classList.add('comment-flash');
-    setTimeout(() => li.classList.remove('comment-flash'), 1500);
+  // Two-way hover sync (§7.3). A comment can be on screen three times at once —
+  // highlight, margin card, list item — and without this there is nothing tying
+  // them together visually.
+  function setActive(commentId: string, on: boolean) {
+    const sel = `[data-comment-id="${commentId}"]`;
+    proseEl.querySelector<HTMLElement>(`mark${sel}`)?.classList.toggle('is-active', on);
+    marginColumn.querySelector<HTMLElement>(sel)?.classList.toggle('is-active', on);
+    listEl.querySelector<HTMLElement>(`li${sel}`)?.classList.toggle('is-active', on);
   }
 
-  function buildListItem(c: CommentDTO, hasSource: boolean): HTMLLIElement {
+  function bindHover(el: HTMLElement, commentId: string) {
+    el.addEventListener('mouseenter', () => setActive(commentId, true));
+    el.addEventListener('mouseleave', () => setActive(commentId, false));
+  }
+
+  // The author block shared by the read popover and the margin card.
+  function buildAuthorRow(c: CommentDTO): HTMLElement {
+    const meta = document.createElement('div');
+    meta.className = 'flex flex-wrap items-baseline gap-x-2';
+    const name = document.createElement('strong');
+    name.className = 'text-sm text-zinc-800 dark:text-zinc-200';
+    name.textContent = authorName(c.author);
+    const tag = document.createElement('span');
+    tag.className = 'text-xs text-zinc-400 dark:text-zinc-500';
+    tag.textContent = readerTag(c.author.userNumber);
+    const date = document.createElement('span');
+    date.className = 'text-xs text-zinc-400 dark:text-zinc-500';
+    date.textContent = relativeDate(c.createdAt);
+    meta.append(name, tag, date);
+    return meta;
+  }
+
+  function buildAvatarImg(a: Author, size: string): HTMLImageElement {
+    const img = document.createElement('img');
+    img.src = avatarSrc(a);
+    img.alt = '';
+    img.loading = 'lazy';
+    img.referrerPolicy = 'no-referrer';
+    img.className = `${size} flex-none rounded-full bg-zinc-100 object-cover dark:bg-zinc-700`;
+    return img;
+  }
+
+  /**
+   * Open a comment where the reader already is (§7.1). Deliberately does not
+   * scroll: the whole point of feedback #4 was that reading a comment cost you
+   * your place in the text.
+   */
+  function openReadPopover(commentId: string, rect: DOMRect) {
+    const c = allComments.find((x) => x.id === commentId);
+    if (!c) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'flex gap-3 pr-4';
+    const col = document.createElement('div');
+    col.className = 'min-w-0 flex-1';
+    const body = document.createElement('p');
+    body.className = 'mt-1 text-sm whitespace-pre-wrap text-zinc-600 dark:text-zinc-400';
+    body.textContent = c.body;
+    col.append(buildAuthorRow(c), body, buildLikeControl(c));
+    wrap.append(buildAvatarImg(c.author, 'h-8 w-8'), col);
+    readBodyEl.replaceChildren(wrap);
+
+    readEl.classList.remove('hidden');
+    if (coarsePointer.matches) {
+      // A popover pinned to the tap point would sit under the reader's own hand.
+      readEl.classList.add('is-sheet');
+      readEl.style.cssText = 'left:0;right:0;bottom:0;top:auto;width:auto;transform:none;';
+    } else {
+      readEl.classList.remove('is-sheet');
+      readEl.style.cssText = '';
+      anchorToSelection(readEl, rect, 0);
+    }
+  }
+
+  function closeReadPopover() {
+    readEl.classList.add('hidden');
+    readEl.classList.remove('is-sheet');
+    readEl.style.cssText = '';
+  }
+
+  // --- Likes (COMMENTS_V2.md §8) ---
+
+  function applyLikeState(wrap: HTMLElement, c: CommentDTO) {
+    const btn = wrap.querySelector('.comment-like-btn')!;
+    const count = wrap.querySelector('.comment-like-count') as HTMLElement;
+    btn.classList.toggle('is-liked', c.likedByMe);
+    btn.setAttribute('aria-pressed', String(c.likedByMe));
+    count.textContent = String(c.likeCount);
+    // §8.4: no "0" sitting under every comment that nobody has liked yet.
+    count.classList.toggle('hidden', c.likeCount === 0);
+  }
+
+  /** One comment can be on screen three times, so a toggle updates all of them. */
+  function syncLikeUI(c: CommentDTO) {
+    document
+      .querySelectorAll<HTMLElement>(`.comment-like[data-comment-id="${c.id}"]`)
+      .forEach((wrap) => applyLikeState(wrap, c));
+  }
+
+  /**
+   * The heart and the count are separate controls on purpose: the heart toggles,
+   * the count opens the who-liked popover. Folding them into one button would
+   * make a tap on a phone ambiguous — §8.6 wants tap to *show* the likers, while
+   * §8.4 wants a press to like.
+   */
+  function buildLikeControl(c: CommentDTO): HTMLElement {
+    const wrap = document.createElement('span');
+    wrap.className = 'comment-like mt-1.5 flex items-center gap-1';
+    wrap.dataset.commentId = c.id;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'comment-like-btn';
+    btn.setAttribute('aria-label', 'Like');
+    btn.textContent = '\u2665';
+    btn.addEventListener('click', (e) => {
+      // The margin card is itself a button that opens the read popover.
+      e.stopPropagation();
+      void toggleLike(c.id);
+    });
+
+    const count = document.createElement('button');
+    count.type = 'button';
+    count.className = 'comment-like-count';
+    count.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showLikers(c.id, count.getBoundingClientRect());
+    });
+    count.addEventListener('mouseenter', () => {
+      if (!coarsePointer.matches) showLikers(c.id, count.getBoundingClientRect());
+    });
+    count.addEventListener('mouseleave', () => {
+      if (!coarsePointer.matches) hideLikers();
+    });
+
+    wrap.append(btn, count);
+    applyLikeState(wrap, c);
+    return wrap;
+  }
+
+  function showLikers(commentId: string, rect: DOMRect) {
+    const c = allComments.find((x) => x.id === commentId);
+    if (!c || c.likeCount === 0) return;
+
+    const list = document.createElement('div');
+    list.className = 'flex flex-col gap-2';
+    for (const liker of c.likers) {
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-2';
+      const nameWrap = document.createElement('span');
+      nameWrap.className = 'truncate text-xs text-zinc-700 dark:text-zinc-300';
+      nameWrap.textContent = authorName(liker);
+      const tag = document.createElement('span');
+      tag.className = 'flex-none text-xs text-zinc-400 dark:text-zinc-500';
+      tag.textContent = readerTag(liker.userNumber);
+      row.append(buildAvatarImg(liker, 'h-5 w-5'), nameWrap, tag);
+      list.appendChild(row);
+    }
+    if (c.likerOverflow > 0) {
+      const more = document.createElement('p');
+      more.className = 'text-xs text-zinc-400 dark:text-zinc-500';
+      more.textContent = `+${c.likerOverflow} more`;
+      list.appendChild(more);
+    }
+    likersEl.replaceChildren(list);
+
+    likersEl.classList.remove('hidden');
+    if (coarsePointer.matches) dock(likersEl, 'bottom');
+    else anchorToSelection(likersEl, rect, 0);
+  }
+
+  function hideLikers() {
+    likersEl.classList.add('hidden');
+  }
+
+  /**
+   * Optimistic toggle, reverted on failure (§8.4). Signed out, this reuses the
+   * same "act first, authenticate at the moment of commitment" path as posting a
+   * comment — the like is applied automatically afterwards, with no second click.
+   */
+  async function toggleLike(commentId: string) {
+    const c = allComments.find((x) => x.id === commentId);
+    if (!c) return;
+
+    const prevLiked = c.likedByMe;
+    const prevCount = c.likeCount;
+    const revert = () => {
+      c.likedByMe = prevLiked;
+      c.likeCount = prevCount;
+      syncLikeUI(c);
+    };
+
+    c.likedByMe = !prevLiked;
+    c.likeCount = prevCount + (c.likedByMe ? 1 : -1);
+    syncLikeUI(c);
+
+    const send = () =>
+      fetch(`/api/comments/${encodeURIComponent(commentId)}/like`, { method: 'POST' });
+
+    let res = await send();
+    if (res.status === 401 || res.status === 403) {
+      // Put the count back while the dialog is up, so the reader isn't looking at
+      // a like that hasn't happened yet behind the sign-in form.
+      revert();
+      const signedIn = await window.openAuthDialog?.({
+        reason: 'Sign in to like this comment.',
+      });
+      if (!signedIn) return;
+      await refreshCaption();
+      res = await send();
+    }
+
+    if (!res.ok) {
+      revert();
+      return;
+    }
+
+    const data = (await res.json()) as { liked: boolean; count: number };
+    c.likedByMe = data.liked;
+    c.likeCount = data.count;
+    // Keep the popover honest without refetching the page's comments.
+    if (viewer) {
+      const mine = viewer;
+      if (data.liked && !c.likers.some((l) => l.id === mine.id)) c.likers.push(mine);
+      if (!data.liked) c.likers = c.likers.filter((l) => l.id !== mine.id);
+    }
+    syncLikeUI(c);
+  }
+
+  function buildListItem(c: CommentDTO, state: ListState): HTMLLIElement {
     const li = document.createElement('li');
     li.dataset.commentId = c.id;
     li.className = 'scroll-mt-24 flex gap-3 rounded-xl p-1';
 
     const img = document.createElement('img');
-    img.src = c.author.avatarUrl || '';
+    img.src = avatarSrc(c.author);
     img.alt = '';
     img.loading = 'lazy';
     img.referrerPolicy = 'no-referrer';
@@ -201,74 +516,126 @@ const { slug, lang } = Astro.props;
     const name = document.createElement('strong');
     name.className = 'text-sm text-zinc-800 dark:text-zinc-200';
     name.textContent = authorName(c.author);
+    // Names are free text and two readers can share one — including yours. The
+    // reader number is the only thing that tells them apart.
+    const tag = document.createElement('span');
+    tag.className = 'text-xs text-zinc-400 dark:text-zinc-500';
+    tag.textContent = readerTag(c.author.userNumber);
     const date = document.createElement('span');
     date.className = 'text-xs text-zinc-400 dark:text-zinc-500';
     date.textContent = relativeDate(c.createdAt);
-    meta.append(name, date);
+    meta.append(name, tag, date);
 
     const body = document.createElement('p');
     body.className = 'mt-1 text-sm whitespace-pre-wrap text-zinc-600 dark:text-zinc-400';
     body.textContent = c.body;
 
-    col.append(meta, body);
+    // §7.4: show the passage the comment is about. An anchored comment in this
+    // list otherwise says nothing about what it refers to until you jump to it,
+    // which is the trip feedback #4 wanted removed. The text is already in the
+    // payload, so this costs a node. Orphaned comments keep their quote too —
+    // the passage is gone from the post, not from the record.
+    if (c.anchorExact) {
+      const quote = document.createElement('blockquote');
+      quote.className =
+        'mt-1 line-clamp-2 border-l-2 border-grad-from pl-2 text-xs text-zinc-500 italic dark:text-zinc-400';
+      quote.textContent = c.anchorExact;
+      col.append(meta, quote, body);
+    } else {
+      col.append(meta, body);
+    }
 
-    if (hasSource) {
+    if (state !== 'plain') bindHover(li, c.id);
+
+    if (state === 'anchored') {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'gradient-text mt-1.5 text-xs font-semibold hover:opacity-80';
       btn.textContent = 'Go to source →';
       btn.addEventListener('click', () => goToSource(c.id));
       col.appendChild(btn);
-    } else {
+    } else if (state === 'orphaned') {
+      // R3: the passage this was attached to was edited out of the post. Degrade
+      // quietly — comment stays, navigation goes away, nothing throws.
       const note = document.createElement('p');
       note.className = 'mt-1.5 text-xs text-zinc-400 italic dark:text-zinc-500';
       note.textContent = 'Original passage no longer available.';
       col.appendChild(note);
     }
+    // 'plain' adds nothing: it never had a source, so there is nothing to
+    // navigate to and nothing to apologise for.
+
+    col.appendChild(buildLikeControl(c));
 
     li.append(img, col);
     return li;
   }
 
-  function positionMarginAvatars() {
+  function buildMarginAvatar(c: CommentDTO): HTMLElement {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'comment-avatar-btn';
+    btn.dataset.commentId = c.id;
+    btn.title = `${authorName(c.author)} ${readerTag(c.author.userNumber)}`.trim();
+    btn.appendChild(buildAvatarImg(c.author, 'h-full w-full'));
+    return btn;
+  }
+
+  // §7.2's card: avatar + name + number + body clamped to three lines. The full
+  // text is one click away in the read popover, so the clamp loses nothing.
+  function buildMarginCard(c: CommentDTO): HTMLElement {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'comment-margin-card';
+    card.dataset.commentId = c.id;
+
+    const row = document.createElement('div');
+    row.className = 'flex gap-2';
+    const col = document.createElement('div');
+    col.className = 'min-w-0 flex-1';
+    const body = document.createElement('p');
+    body.className =
+      'comment-margin-card-body mt-1 text-xs whitespace-pre-wrap text-zinc-600 dark:text-zinc-400';
+    body.textContent = c.body;
+    col.append(buildAuthorRow(c), body, buildLikeControl(c));
+    row.append(buildAvatarImg(c.author, 'h-6 w-6'), col);
+    card.appendChild(row);
+    return card;
+  }
+
+  function positionMargin() {
     if (window.innerWidth < 1024 || resolved.length === 0) {
       marginColumn.replaceChildren();
       return;
     }
+    const cards = window.innerWidth >= CARD_BREAKPOINT;
+    marginColumn.classList.toggle('is-cards', cards);
+
     const proseRect = proseEl.getBoundingClientRect();
     marginColumn.style.left = `${proseRect.right + window.scrollX + 24}px`;
 
     const placements = resolved.map((r) => ({
-      r,
+      comment: r.comment,
+      el: cards ? buildMarginCard(r.comment) : buildMarginAvatar(r.comment),
       top: r.mark.getBoundingClientRect().top + window.scrollY,
     }));
     placements.sort((a, b) => a.top - b.top);
 
-    const AVATAR_SIZE = 32;
-    const GAP = 6;
+    // Append before measuring: a card's height depends on how its body wraps at
+    // the column's width, so there is no constant to stack against the way the
+    // fixed-size avatars allowed.
+    marginColumn.replaceChildren(...placements.map((p) => p.el));
+
+    const GAP = 8;
     let prevBottom = -Infinity;
     for (const p of placements) {
       p.top = Math.max(p.top, prevBottom + GAP);
-      prevBottom = p.top + AVATAR_SIZE;
-    }
-
-    marginColumn.replaceChildren();
-    for (const p of placements) {
-      const { comment: c, mark } = p.r;
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'comment-avatar-btn';
-      btn.style.top = `${p.top}px`;
-      btn.title = authorName(c.author);
-      btn.addEventListener('click', () => goToListItem(c.id));
-      const img = document.createElement('img');
-      img.src = c.author.avatarUrl || '';
-      img.alt = '';
-      img.loading = 'lazy';
-      img.referrerPolicy = 'no-referrer';
-      btn.appendChild(img);
-      marginColumn.appendChild(btn);
-      void mark; // referenced via closure for its bounding rect above
+      p.el.style.top = `${p.top}px`;
+      prevBottom = p.top + p.el.offsetHeight;
+      p.el.addEventListener('click', () =>
+        openReadPopover(p.comment.id, p.el.getBoundingClientRect())
+      );
+      bindHover(p.el, p.comment.id);
     }
   }
 
@@ -285,11 +652,23 @@ const { slug, lang } = Astro.props;
       parent.normalize();
     });
 
-    listEl.replaceChildren();
+    allComments = comments;
+    stateById.clear();
     emptyEl.classList.toggle('hidden', comments.length > 0);
+    countEl.textContent = comments.length ? `(${comments.length})` : '';
     resolved = [];
 
     for (const c of comments) {
+      // A plain comment has no anchor to resolve, so it never gets a <mark>,
+      // never enters `resolved`, and therefore never reaches the margin column
+      // (COMMENTS_V2.md §6.6). Skipping the call is also what keeps it out of the
+      // 'orphaned' state — resolveAnchor would return null here and be
+      // indistinguishable from a passage that was edited away.
+      if (c.anchorExact === null || c.blockIndex === null) {
+        stateById.set(c.id, 'plain');
+        continue;
+      }
+
       const query: AnchorQuery = {
         blockIndex: c.blockIndex,
         exact: c.anchorExact,
@@ -301,12 +680,15 @@ const { slug, lang } = Astro.props;
 
       let mark: HTMLElement | null = null;
       if (range) {
-        mark = document.createElement('mark');
-        mark.className = 'comment-highlight';
-        mark.dataset.commentId = c.id;
-        mark.addEventListener('click', () => goToListItem(c.id));
+        const el = document.createElement('mark');
+        el.className = 'comment-highlight';
+        el.dataset.commentId = c.id;
+        // §7.1: read in place instead of scrolling to the bottom list.
+        el.addEventListener('click', () => openReadPopover(c.id, el.getBoundingClientRect()));
+        bindHover(el, c.id);
         try {
-          range.surroundContents(mark);
+          range.surroundContents(el);
+          mark = el;
         } catch {
           // Range straddles a partial element boundary (nested inline markup) that
           // surroundContents can't wrap — degrade to "no highlight" per R3, comment
@@ -316,10 +698,41 @@ const { slug, lang } = Astro.props;
       }
 
       if (mark) resolved.push({ comment: c, mark });
-      listEl.appendChild(buildListItem(c, !!mark));
+      stateById.set(c.id, mark ? 'anchored' : 'orphaned');
     }
 
-    positionMarginAvatars();
+    renderList();
+    positionMargin();
+  }
+
+  /**
+   * The bottom list (§7.5): newest first, capped at LIST_LIMIT until expanded.
+   *
+   * Note the order flip — the API still returns createdAt ascending (§6.3) and
+   * the margin column still follows document order. Only this list is newest-
+   * first, because "show me the latest five" is what it is for.
+   */
+  function renderList() {
+    const ordered = [...allComments].sort((a, b) => {
+      // §8.7: ties fall back to newest, which is also the whole comparator in
+      // 'newest' mode — so there is one ordering rule, not two.
+      if (sortMode === 'likes' && b.likeCount !== a.likeCount) return b.likeCount - a.likeCount;
+      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+    });
+    const shown = listExpanded ? ordered : ordered.slice(0, LIST_LIMIT);
+
+    listEl.replaceChildren();
+    for (const c of shown) listEl.appendChild(buildListItem(c, stateById.get(c.id) ?? 'plain'));
+
+    showAllBtn.classList.toggle('hidden', ordered.length <= LIST_LIMIT);
+    showAllBtn.textContent = listExpanded ? 'Show fewer' : `Show all (${ordered.length})`;
+
+    // Nothing to reorder with fewer than two comments.
+    sortEl.classList.toggle('hidden', ordered.length < 2);
+    sortEl.classList.toggle('flex', ordered.length >= 2);
+    sortEl.querySelectorAll<HTMLElement>('[data-sort]').forEach((b) => {
+      b.classList.toggle('is-active', b.dataset.sort === sortMode);
+    });
   }
 
   function hideBubble() {
@@ -330,10 +743,47 @@ const { slug, lang } = Astro.props;
     hintEl.classList.add('hidden');
   }
 
-  function positionFloating(el: HTMLElement, rect: DOMRect, offsetAbove = 0) {
-    el.style.top = `${Math.min(window.innerHeight - 20, rect.bottom + 8)}px`;
-    el.style.left = `${Math.min(window.innerWidth - 20 - el.offsetWidth, Math.max(8, rect.left))}px`;
-    if (offsetAbove) el.style.top = `${rect.top - offsetAbove}px`;
+  // Touch platforms draw their own selection menu (Copy / Look Up / Translate…) as native
+  // chrome over the page: it can't be styled, suppressed or out-z-indexed, and it hugs the
+  // selection — normally in the strip right above it, exactly where the bubble used to sit.
+  // So on coarse pointers we stop competing for that space and dock our own controls to a
+  // viewport edge instead. Mouse pointers get no such menu and keep the anchored placement.
+  const coarsePointer = window.matchMedia('(pointer: coarse)');
+  const EDGE = 8;
+  const DOCK = 16;
+
+  function clamp(min: number, value: number, max: number) {
+    return Math.max(min, Math.min(value, max));
+  }
+
+  function dock(el: HTMLElement, edge: 'top' | 'bottom') {
+    el.style.left = '50%';
+    el.style.transform = 'translateX(-50%)';
+    el.style.top = edge === 'top' ? `calc(env(safe-area-inset-top, 0px) + ${DOCK}px)` : 'auto';
+    el.style.bottom = edge === 'bottom' ? `calc(env(safe-area-inset-bottom, 0px) + ${DOCK}px)` : 'auto';
+  }
+
+  function anchorToSelection(el: HTMLElement, rect: DOMRect, offsetAbove: number) {
+    el.style.transform = '';
+    el.style.bottom = 'auto';
+    const top = offsetAbove ? rect.top - offsetAbove : rect.bottom + 8;
+    el.style.top = `${clamp(EDGE, top, window.innerHeight - el.offsetHeight - EDGE)}px`;
+    el.style.left = `${clamp(EDGE, rect.left, window.innerWidth - el.offsetWidth - EDGE)}px`;
+  }
+
+  // Bubble and hint are on screen while the native menu is, so on touch they go to
+  // whichever edge the selection is furthest from.
+  function positionSelectionUi(el: HTMLElement, rect: DOMRect) {
+    if (coarsePointer.matches) dock(el, rect.bottom > window.innerHeight * 0.6 ? 'top' : 'bottom');
+    else anchorToSelection(el, rect, 40);
+  }
+
+  // Composer: on touch it docks to the top edge, since focusing the textarea raises the
+  // on-screen keyboard over the bottom of the screen — and `position: fixed` resolves
+  // against the layout viewport, which the keyboard doesn't shrink.
+  function positionComposer(el: HTMLElement, rect: DOMRect) {
+    if (coarsePointer.matches) dock(el, 'top');
+    else anchorToSelection(el, rect, 0);
   }
 
   function handleSelectionChange() {
@@ -359,45 +809,31 @@ const { slug, lang } = Astro.props;
       const rect = range.getBoundingClientRect();
       bubble.classList.remove('hidden');
       bubble.classList.add('flex');
-      positionFloating(bubble, rect, 40);
+      positionSelectionUi(bubble, rect);
     } else {
       hideBubble();
       const rect = range.getBoundingClientRect();
       hintEl.classList.remove('hidden');
-      positionFloating(hintEl, rect, 36);
+      positionSelectionUi(hintEl, rect);
     }
   }
 
   document.addEventListener('selectionchange', handleSelectionChange);
 
-  async function openComposer(capture: CapturedSelection, rect: DOMRect, prefillBody = '') {
+  // Always opens straight into the textarea, signed in or not. Authentication is
+  // deferred to Post — see the submit handler (COMMENTS_V2.md §3.4).
+  function openComposer(capture: CapturedSelection, rect: DOMRect, prefillBody = '') {
     activeCapture = capture;
     hideBubble();
     hideHint();
     popoverQuote.textContent = capture.exact;
     textarea.value = prefillBody;
     errorEl.classList.add('hidden');
-    loginSentEl.classList.add('hidden');
-
-    const { data } = await authClient.getSession();
-    if (!data) {
-      composeEl.classList.add('hidden');
-      incompleteEl.classList.add('hidden');
-      loginEl.classList.remove('hidden');
-    } else if (!data.user.profileComplete) {
-      composeEl.classList.add('hidden');
-      loginEl.classList.add('hidden');
-      incompleteEl.classList.remove('hidden');
-      incompleteLink.href = `/welcome?next=${encodeURIComponent(currentPath())}`;
-    } else {
-      loginEl.classList.add('hidden');
-      incompleteEl.classList.add('hidden');
-      composeEl.classList.remove('hidden');
-    }
+    composeEl.classList.remove('hidden');
 
     popover.classList.remove('hidden');
-    positionFloating(popover, rect);
-    if (!composeEl.classList.contains('hidden')) textarea.focus();
+    positionComposer(popover, rect);
+    textarea.focus();
   }
 
   function closePopover() {
@@ -417,109 +853,227 @@ const { slug, lang } = Astro.props;
   document.addEventListener('mousedown', (e) => {
     const target = e.target as Node;
     if (popover.classList.contains('hidden')) return;
+    // AuthDialog renders in the top layer, so a click inside it is not "inside"
+    // the popover by DOM containment — without this the sign-in dialog would
+    // dismiss the composer it was raised over, taking the draft with it.
+    if (document.querySelector('dialog[open]')) return;
     if (popover.contains(target) || bubble.contains(target)) return;
     closePopover();
   });
 
-  submitBtn.addEventListener('click', async () => {
-    if (!activeCapture) return;
-    const body = textarea.value.trim();
-    if (!body) {
-      errorEl.textContent = 'Comment can\'t be empty.';
-      errorEl.classList.remove('hidden');
-      return;
-    }
-    submitBtn.disabled = true;
-    errorEl.classList.add('hidden');
+  function showErrorIn(el: HTMLElement, message: string) {
+    el.textContent = message;
+    el.classList.remove('hidden');
+  }
 
-    const res = await fetch('/api/comments', {
+  // `capture === null` posts a plain, whole-post comment. The anchor keys are
+  // omitted from the payload entirely rather than sent as nulls, because the
+  // route rejects a request carrying some anchor fields without anchorExact.
+  function postComment(capture: CapturedSelection | null, body: string) {
+    return fetch('/api/comments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         slug,
         lang,
-        blockIndex: activeCapture.blockIndex,
-        anchorExact: activeCapture.exact,
-        anchorPrefix: activeCapture.prefix,
-        anchorSuffix: activeCapture.suffix,
-        anchorOffsetHint: activeCapture.offsetHint,
+        ...(capture
+          ? {
+              blockIndex: capture.blockIndex,
+              anchorExact: capture.exact,
+              anchorPrefix: capture.prefix,
+              anchorSuffix: capture.suffix,
+              anchorOffsetHint: capture.offsetHint,
+            }
+          : {}),
         body,
       }),
     });
+  }
 
-    submitBtn.disabled = false;
+  /**
+   * Post, and if there's no session yet, raise AuthDialog over whatever the
+   * reader was doing and post again once they're through it.
+   *
+   * Both composers share this, which is the point: "act first, authenticate at
+   * the moment of commitment" is written once (COMMENTS_V2.md §3.4) and the like
+   * button in phase 6 is meant to reuse the same shape. The draft needs no
+   * persistence — with OTP the page never unloads, so it is still sitting in the
+   * textarea behind the dialog.
+   */
+  async function submitComment(
+    capture: CapturedSelection | null,
+    body: string,
+    showError: (message: string) => void
+  ): Promise<boolean> {
+    let res = await postComment(capture, body);
 
     if (res.status === 401 || res.status === 403) {
-      openComposer(activeCapture, popover.getBoundingClientRect(), body);
+      const signedIn = await window.openAuthDialog?.({
+        reason: 'Sign in to post your comment — your draft is right where you left it.',
+      });
+      if (!signedIn) return false;
+      res = await postComment(capture, body);
+    }
+
+    if (!res.ok) {
+      showError(
+        res.status === 429
+          ? 'You\'re posting a little fast — give it a minute.'
+          : 'Something went wrong — please try again.'
+      );
+      return false;
+    }
+    return true;
+  }
+
+  submitBtn.addEventListener('click', async () => {
+    if (!activeCapture) return;
+    const capture = activeCapture;
+    const body = textarea.value.trim();
+    if (!body) {
+      showErrorIn(errorEl, 'Comment can\'t be empty.');
       return;
     }
-    if (!res.ok) {
-      errorEl.textContent = 'Something went wrong — please try again.';
-      errorEl.classList.remove('hidden');
+    submitBtn.disabled = true;
+    errorEl.classList.add('hidden');
+
+    const ok = await submitComment(capture, body, (m) => showErrorIn(errorEl, m));
+    submitBtn.disabled = false;
+    if (!ok) {
+      textarea.focus();
       return;
     }
 
     closePopover();
     await loadComments();
+    await refreshCaption();
   });
 
-  loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!activeCapture) return;
-    const email = String(new FormData(loginForm).get('email') || '');
-    const next = currentPath();
-    loginErrorEl.classList.add('hidden');
+  // --- Plain composer (COMMENTS_V2.md §6.5) ---
 
-    localStorage.setItem(
-      DRAFT_KEY,
-      JSON.stringify({ slug, lang, ...activeCapture, body: textarea.value, path: next })
-    );
+  const plainAvatar = document.getElementById('plain-composer-avatar') as HTMLImageElement;
+  const plainTextarea = document.getElementById('plain-composer-textarea') as HTMLTextAreaElement;
+  const plainError = document.getElementById('plain-composer-error')!;
+  const plainActions = document.getElementById('plain-composer-actions')!;
+  const plainSubmit = document.getElementById('plain-composer-submit') as HTMLButtonElement;
+  const plainCancel = document.getElementById('plain-composer-cancel')!;
 
-    const submitEl = loginForm.querySelector('button[type="submit"]') as HTMLButtonElement;
-    submitEl.disabled = true;
-    const { error } = await authClient.signIn.magicLink({
-      email,
-      callbackURL: next,
-      newUserCallbackURL: `/welcome?next=${encodeURIComponent(next)}`,
-    });
-    submitEl.disabled = false;
-
-    if (error) {
-      localStorage.removeItem(DRAFT_KEY);
-      loginErrorEl.textContent = 'Could not send the link — please try again.';
-      loginErrorEl.classList.remove('hidden');
-      return;
-    }
-    loginForm.classList.add('hidden');
-    loginSentEl.classList.remove('hidden');
-  });
-
-  async function restoreDraft() {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return;
-    localStorage.removeItem(DRAFT_KEY);
-
-    let draft: (CapturedSelection & { slug: string; lang: string; body: string; path: string }) | null = null;
-    try {
-      draft = JSON.parse(raw);
-    } catch {
-      return;
-    }
-    if (!draft || draft.slug !== slug || draft.lang !== lang || draft.path !== currentPath()) return;
-
-    const { data } = await authClient.getSession();
-    if (!data) return; // still not signed in — nothing to resume yet
-
-    const range = resolveAnchor(proseEl, draft);
-    const rect = range ? range.getBoundingClientRect() : proseEl.getBoundingClientRect();
-    await openComposer(
-      { blockIndex: draft.blockIndex, exact: draft.exact, prefix: draft.prefix, suffix: draft.suffix, offsetHint: draft.offsetHint },
-      rect,
-      draft.body
-    );
+  function expandPlainComposer(on: boolean) {
+    plainActions.classList.toggle('hidden', !on);
+    plainActions.classList.toggle('flex', on);
+    plainTextarea.rows = on ? 3 : 1;
   }
 
-  window.addEventListener('resize', positionMarginAvatars);
+  plainTextarea.addEventListener('focus', () => expandPlainComposer(true));
 
-  loadComments().then(restoreDraft);
+  plainCancel.addEventListener('click', () => {
+    plainTextarea.value = '';
+    plainError.classList.add('hidden');
+    expandPlainComposer(false);
+    plainTextarea.blur();
+  });
+
+  plainSubmit.addEventListener('click', async () => {
+    const body = plainTextarea.value.trim();
+    if (!body) {
+      showErrorIn(plainError, 'Comment can\'t be empty.');
+      return;
+    }
+    plainSubmit.disabled = true;
+    plainError.classList.add('hidden');
+
+    const ok = await submitComment(null, body, (m) => showErrorIn(plainError, m));
+    plainSubmit.disabled = false;
+    if (!ok) {
+      plainTextarea.focus();
+      return;
+    }
+
+    plainTextarea.value = '';
+    expandPlainComposer(false);
+    await loadComments();
+    await refreshCaption();
+  });
+
+  // The caption doubles as the section's call to action, so it disappears once
+  // the reader can actually comment.
+  async function refreshCaption() {
+    const { data } = await authClient.getSession();
+    captionEl.classList.toggle('hidden', !!data?.user.profileComplete);
+
+    // Better Auth's core `name`/`image` fields are stored in first_name and
+    // avatar_url (see lib/auth.ts), so the first name really is `user.name`.
+    // Signed out, a neutral monogram — the box still invites a comment, it just
+    // doesn't pretend to know who is writing it.
+    viewer = data
+      ? {
+          id: data.user.id,
+          userNumber: data.user.userNumber ?? null,
+          firstName: data.user.name,
+          lastName: data.user.lastName,
+          avatarUrl: data.user.image,
+        }
+      : null;
+
+    plainAvatar.src = data
+      ? avatarSrc({
+          id: data.user.id,
+          avatarUrl: data.user.image,
+          firstName: data.user.name,
+          lastName: data.user.lastName,
+          email: data.user.email,
+        })
+      : monogramDataUri('guest', '·');
+  }
+
+  captionBtn.addEventListener('click', async () => {
+    await window.openAuthDialog?.({ reason: 'An account is only needed to comment.' });
+    await refreshCaption();
+  });
+
+  sortEl.querySelectorAll<HTMLElement>('[data-sort]').forEach((b) => {
+    b.addEventListener('click', () => {
+      sortMode = b.dataset.sort === 'likes' ? 'likes' : 'newest';
+      renderList();
+    });
+  });
+
+  // The likers popover is passive — anything that moves the page dismisses it.
+  window.addEventListener('scroll', hideLikers, { passive: true });
+
+  showAllBtn.addEventListener('click', () => {
+    listExpanded = !listExpanded;
+    renderList();
+  });
+
+  readCloseBtn.addEventListener('click', closeReadPopover);
+
+  document.addEventListener('mousedown', (e) => {
+    if (readEl.classList.contains('hidden')) return;
+    const target = e.target as HTMLElement;
+    if (readEl.contains(target)) return;
+    // A click on another highlight or card re-targets the popover rather than
+    // closing it, so those handlers get to run instead.
+    if (target.closest?.('mark.comment-highlight, .comment-margin-card, .comment-avatar-btn')) return;
+    closeReadPopover();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeReadPopover();
+      hideLikers();
+    }
+  });
+
+  document.addEventListener('mousedown', (e) => {
+    if (likersEl.classList.contains('hidden')) return;
+    const target = e.target as HTMLElement;
+    if (likersEl.contains(target) || target.closest?.('.comment-like-count')) return;
+    hideLikers();
+  });
+
+  window.addEventListener('resize', positionMargin);
+
+  loadComments();
+  refreshCaption();
 </script>

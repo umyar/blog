@@ -50,7 +50,7 @@ const fmt = (date: string) =>
             >Umiar Iusupov</a
           > — on building things, mental health, and figuring out a new home in Portugal.
         </p>
-        <div class="mt-6 flex gap-6">
+        <div class="mt-6 flex flex-wrap items-center gap-6">
           <a
             href="https://t.me/umyar"
             aria-label="Telegram"
@@ -85,6 +85,14 @@ const fmt = (date: string) =>
                 d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.93 6h-2.95a15.7 15.7 0 0 0-1.38-3.56A8.03 8.03 0 0 1 18.92 8ZM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96ZM4.26 14a7.96 7.96 0 0 1 0-4h3.38a16.6 16.6 0 0 0 0 4H4.26Zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56A8 8 0 0 1 5.08 16Zm2.95-8H5.08a8 8 0 0 1 4.33-3.56A15.7 15.7 0 0 0 8.03 8ZM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96ZM14.34 14H9.66a14.8 14.8 0 0 1 0-4h4.68a14.8 14.8 0 0 1 0 4Zm.27 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8 8 0 0 1-4.33 3.56ZM16.36 14a16.6 16.6 0 0 0 0-4h3.38a7.96 7.96 0 0 1 0 4h-3.38Z"
                 clip-rule="evenodd"></path>
             </svg>
+          </a>
+          <!-- Jumps to the subscribe form in the footer. A plain anchor, so it
+               works before hydration and can be shared as a link. -->
+          <a
+            href="#subscribe"
+            class="rounded-full bg-gradient-to-r from-grad-from to-grad-to px-4 py-2 text-sm font-semibold whitespace-nowrap text-white transition hover:opacity-90"
+          >
+            Subscribe by email
           </a>
         </div>
       </div>

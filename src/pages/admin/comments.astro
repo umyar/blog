@@ -7,6 +7,7 @@ import { auth } from '../../lib/auth';
 import { db } from '../../lib/db';
 import { comment, user } from '../../lib/db/schema';
 import { isAdmin } from '../../lib/admin';
+import { readerTag } from '../../lib/avatar';
 
 const session = await auth.api.getSession({ headers: Astro.request.headers });
 if (!session || !isAdmin(session.user.id)) {
@@ -22,6 +23,7 @@ const rows = await db
     body: comment.body,
     status: comment.status,
     createdAt: comment.createdAt,
+    userNumber: user.userNumber,
     firstName: user.firstName,
     lastName: user.lastName,
   })
@@ -51,6 +53,8 @@ const rows = await db
               <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400 dark:text-zinc-500">
                 <span>
                   <strong class="text-zinc-700 dark:text-zinc-300">{r.firstName} {r.lastName}</strong>
+                  {' '}
+                  <span>{readerTag(r.userNumber)}</span>
                   {' · '}
                   {r.postSlug}/{r.lang}
                   {' · '}
@@ -67,9 +71,16 @@ const rows = await db
                   </button>
                 </span>
               </div>
-              <p class="mt-2 border-l-2 border-grad-from pl-2 text-xs text-zinc-500 italic dark:text-zinc-400">
-                {r.anchorExact}
-              </p>
+              {/* Null for a plain, whole-post comment (COMMENTS_V2.md §6.1) —
+                  rendering it unconditionally would leave an empty quote bar
+                  under every one of them. */}
+              {r.anchorExact ? (
+                <p class="mt-2 border-l-2 border-grad-from pl-2 text-xs text-zinc-500 italic dark:text-zinc-400">
+                  {r.anchorExact}
+                </p>
+              ) : (
+                <p class="mt-2 text-xs text-zinc-400 dark:text-zinc-500">On the post as a whole</p>
+              )}
               <p class="mt-1 text-zinc-700 dark:text-zinc-300">{r.body}</p>
             </li>
           ))

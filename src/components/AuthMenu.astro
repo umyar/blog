@@ -1,0 +1,125 @@
+---
+// The site-wide identity affordance (COMMENTS_V2.md §3.5). Before this, the only
+// way to sign in was a form at the bottom of a post — the first thing reader
+// feedback complained about.
+//
+// Client-resolved: post pages are prerendered, so there is no session to read at
+// build time. The control starts as an inert placeholder of the final size so the
+// header doesn't jump when the session lands.
+---
+
+<div class="relative" id="auth-menu">
+  <!-- Reserves the button's footprint until we know which button to show. -->
+  <div id="auth-menu-placeholder" class="h-10 w-10"></div>
+
+  <button type="button" id="auth-menu-signin" class="auth-menu-pill hidden px-4 py-2 text-sm font-medium">
+    Sign in
+  </button>
+
+  <button
+    type="button"
+    id="auth-menu-trigger"
+    aria-haspopup="menu"
+    aria-expanded="false"
+    aria-label="Account"
+    class="auth-menu-pill hidden p-1"
+  >
+    <img id="auth-menu-avatar" alt="" width="32" height="32" referrerpolicy="no-referrer" class="h-8 w-8 rounded-full bg-zinc-100 object-cover dark:bg-zinc-700" />
+  </button>
+
+  <div
+    id="auth-menu-panel"
+    role="menu"
+    class="absolute right-0 z-50 mt-2 hidden w-52 rounded-2xl bg-white p-1.5 shadow-xl ring-1 shadow-zinc-800/10 ring-zinc-900/10 dark:border dark:border-zinc-700/50 dark:bg-zinc-800 dark:ring-0"
+  >
+    <p class="truncate px-3 pt-2 pb-1 text-xs text-zinc-400 dark:text-zinc-500" id="auth-menu-email"></p>
+    <button type="button" role="menuitem" id="auth-menu-finish" class="auth-menu-item hidden">
+      Finish your profile
+    </button>
+    <a href="/profile" role="menuitem" id="auth-menu-profile" class="auth-menu-item hidden">
+      Profile
+    </a>
+    <button type="button" role="menuitem" id="auth-menu-signout" class="auth-menu-item">
+      Sign out
+    </button>
+  </div>
+</div>
+
+<script>
+  import { authClient } from '../lib/auth-client';
+  import { avatarSrc, displayName, readerTag } from '../lib/avatar';
+
+  const placeholder = document.getElementById('auth-menu-placeholder')!;
+  const signinBtn = document.getElementById('auth-menu-signin')!;
+  const trigger = document.getElementById('auth-menu-trigger')!;
+  const avatar = document.getElementById('auth-menu-avatar') as HTMLImageElement;
+  const panel = document.getElementById('auth-menu-panel')!;
+  const emailEl = document.getElementById('auth-menu-email')!;
+  const finishBtn = document.getElementById('auth-menu-finish')!;
+  const profileLink = document.getElementById('auth-menu-profile')!;
+  const signoutBtn = document.getElementById('auth-menu-signout')!;
+
+  function closePanel() {
+    panel.classList.add('hidden');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  async function render() {
+    const { data } = await authClient.getSession();
+
+    placeholder.classList.add('hidden');
+    signinBtn.classList.toggle('hidden', !!data);
+    trigger.classList.toggle('hidden', !data);
+    if (!data) {
+      closePanel();
+      return;
+    }
+
+    // `name` / `image` are Better Auth's field names for first_name / avatar_url.
+    emailEl.textContent = `${displayName(data.user.name, data.user.lastName)} ${readerTag(data.user.userNumber)}`.trim();
+    finishBtn.classList.toggle('hidden', !!data.user.profileComplete);
+    profileLink.classList.toggle('hidden', !data.user.profileComplete);
+    avatar.src = avatarSrc({
+      id: data.user.id,
+      avatarUrl: data.user.image,
+      firstName: data.user.name,
+      lastName: data.user.lastName,
+      email: data.user.email,
+    });
+    avatar.alt = displayName(data.user.name, data.user.lastName);
+  }
+
+  signinBtn.addEventListener('click', async () => {
+    await window.openAuthDialog?.();
+    await render();
+  });
+
+  finishBtn.addEventListener('click', async () => {
+    closePanel();
+    await window.openAuthDialog?.();
+    await render();
+  });
+
+  trigger.addEventListener('click', () => {
+    const open = panel.classList.toggle('hidden');
+    trigger.setAttribute('aria-expanded', String(!open));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (panel.classList.contains('hidden')) return;
+    const target = e.target as Node;
+    if (panel.contains(target) || trigger.contains(target)) return;
+    closePanel();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closePanel();
+  });
+
+  signoutBtn.addEventListener('click', async () => {
+    await authClient.signOut();
+    window.location.reload();
+  });
+
+  render();
+</script>

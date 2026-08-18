@@ -1,0 +1,68 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+export const prerender = false;
+
+// Intentionally a button rather than an on-load action: the link to this page
+// sits in every broadcast, and corporate link scanners follow those hrefs. A
+// scanner will happily GET this page — it just won't press the button.
+const token = Astro.url.searchParams.get('token');
+if (!token) {
+  return Astro.redirect('/subscribe?state=invalid');
+}
+---
+
+<BaseLayout title="Unsubscribe — umyar blog" description="Stop getting new-post emails.">
+  <div class="mx-auto mt-16 w-full max-w-7xl px-6 sm:px-14 lg:px-24">
+    <div class="mx-auto max-w-md">
+      <div
+        class="rounded-2xl bg-white p-8 shadow-md ring-1 shadow-zinc-800/5 ring-zinc-900/5 dark:border dark:border-zinc-700/50 dark:bg-zinc-800 dark:ring-0"
+      >
+        <h1 class="gradient-text text-2xl font-bold tracking-tight">Unsubscribe</h1>
+        <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          Confirm below and you'll stop getting emails about new posts.
+        </p>
+
+        <p class="mt-4 hidden text-sm text-red-600" id="unsubscribe-error"></p>
+
+        <button
+          id="unsubscribe-button"
+          data-token={token}
+          class="mt-6 rounded-full bg-gradient-to-r from-grad-from to-grad-to px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+        >
+          Unsubscribe me
+        </button>
+        <a
+          href="/"
+          class="mt-6 ml-3 inline-block text-sm font-medium text-zinc-500 transition hover:gradient-text dark:text-zinc-400"
+        >
+          Never mind
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const button = document.getElementById('unsubscribe-button') as HTMLButtonElement;
+  const errorEl = document.getElementById('unsubscribe-error') as HTMLParagraphElement;
+
+  button.addEventListener('click', async () => {
+    errorEl.classList.add('hidden');
+    button.disabled = true;
+
+    const token = button.dataset.token ?? '';
+    const res = await fetch(`/api/unsubscribe?token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+    }).catch(() => null);
+
+    if (!res?.ok) {
+      errorEl.textContent = "That didn't work — the link may have already been used.";
+      errorEl.classList.remove('hidden');
+      button.disabled = false;
+      return;
+    }
+
+    window.location.href = '/subscribe?state=unsubscribed';
+  });
+</script>

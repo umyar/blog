@@ -23,6 +23,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "^4.3.2",
+    "@vercel/blob": "^2.7.0",
     "astro": "^6.4.4",
     "better-auth": "^1.6.23",
     "drizzle-orm": "^0.45.2",
