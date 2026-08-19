@@ -63,6 +63,11 @@ Nothing below ships without these. All three are outside what the executing agen
   `ADMIN_USER_IDS`, `BLOB_READ_WRITE_TOKEN`, `PUBLIC_SITE_URL`.
 - ✅ **`npm i @vercel/blob`** — installed (`^2.7.0` in `package.json`).
 
+> ⚠️ **No longer true as of 2026-08-19.** Production now holds real data: the author's own account
+> (reader number `u1`), two anchored comments, a like, and a subscriber row. `drizzle-kit push` is a
+> **migration** now, and "wipe and re-push" is no longer a safe move. Everything below described the
+> world on 2026-08-10 and is kept only as the reasoning behind the schema decisions already taken.
+
 **The database is empty and disposable** (confirmed 2026-08-10): no users, no comments, no
 subscribers — only the v1 test rows, which were cleared. Every schema change in this spec is
 therefore a plain `drizzle-kit push`, and wiping and re-pushing is a legitimate move if a diff gets
@@ -195,9 +200,16 @@ Every reader gets a number at signup — `u1`, `u2`, `u16`. Nobody picks it, nob
 there is no form field for it anywhere.
 
 1. **Schema.** `userNumber integer` on `user`, `GENERATED ALWAYS AS IDENTITY`, `NOT NULL`. Rendered as
-   `u${n}`. **Store the integer, not the string** — then the sequence itself is the uniqueness
-   guarantee, and there is nothing to validate, nothing to check for availability, and no race to
-   lose. Gaps are possible (a rolled-back signup consumes a value); that's fine, it's an identifier,
+   `u${n}`. **Store the integer, not the string** — then there is nothing to validate, nothing to
+   check for availability, and no race to lose.
+
+   ⚠️ **Corrected 2026-08-19: "the sequence itself is the uniqueness guarantee" was wrong.** An
+   identity column is not unique on its own. Anything that moves the sequence — `ALTER SEQUENCE …
+   RESTART`, a database restore, a careless cleanup script — can re-issue a number that is already
+   taken, handing a new reader an existing reader's public identity: precisely the impersonation case
+   §4.2.4 claims to have deleted. This was not hypothetical; a cleanup run against what was assumed
+   to be an empty table reset the sequence to 1 while `u1` already existed. A `uniqueIndex`
+   (`user_user_number_idx`) now backs the claim, and the sequence was repaired to `max + 1`. Gaps are possible (a rolled-back signup consumes a value); that's fine, it's an identifier,
    not a tally.
 2. **Assigned at row creation** — the moment Better Auth inserts the user on first sign-in, not at
    profile completion. Every user has one from the instant they exist, including those who never
@@ -694,9 +706,21 @@ cannot be turned into the oracle `/api/subscribe` deliberately isn't.
   `unsubscribed` with `unsubscribed_at` set. The GET on that URL only redirects to a confirmation
   page, so a mail scanner following the link cannot unsubscribe anyone.)*
 
-Not exercised: `/api/subscribe` writing `source: 'footer'`. Driving it end-to-end means letting it
-send a real confirmation email, which was out of bounds for this session — the write itself is one
-field on the existing insert.
+`/api/subscribe` writing `source: 'footer'` is now **verified in production** (2026-08-19): a real
+footer signup landed `status: 'pending'`, `source: 'footer'` and a public `signup_ip`.
+
+That same signup exposed a separate bug, now fixed in [`src/lib/site.ts`](src/lib/site.ts).
+`PUBLIC_*` variables are substituted at **build** time, not read at runtime, so with
+`PUBLIC_SITE_URL` absent from the Vercel build environment `siteUrl()` compiled to
+`return undefined` and the confirmation email carried
+`undefined/api/subscribe/confirm?token=…` — which mail clients render as `http://undefined/…`.
+`siteUrl()` now falls back to the request origin and logs an error instead of silently emitting a
+dead link. **Blast radius was wider than the confirm link:** `api/admin/broadcast.ts` builds every
+*unsubscribe* link through the same helper, so a broadcast sent from that build would have gone out
+with unsubscribe links that could not work.
+
+Because the substitution happens at build time, setting the variable in Vercel is not enough on its
+own — the project has to be **rebuilt** for it to take effect.
 
 ## 10. Sequencing
 

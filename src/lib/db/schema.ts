@@ -25,12 +25,19 @@ export const user = pgTable('user', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 
   // The reader's permanent public identity, rendered as `u16`. Postgres issues it
-  // — nobody picks it and nobody can change it, so the sequence itself is the
-  // uniqueness guarantee and there is no availability check, no format rule and
-  // no race to lose. Gaps (from a rolled-back signup) are fine: it's an
-  // identifier, not a tally. GENERATED ALWAYS is what makes it un-writable; it
-  // stays out of every INSERT because `input: false` keeps it undefined and
-  // Better Auth omits undefined fields that have no default.
+  // — nobody picks it and nobody can change it, so there is no availability
+  // check, no format rule and no race to lose. Gaps (from a rolled-back signup)
+  // are fine: it's an identifier, not a tally. GENERATED ALWAYS is what makes it
+  // un-writable; it stays out of every INSERT because `input: false` keeps it
+  // undefined and Better Auth omits undefined fields that have no default.
+  //
+  // COMMENTS_V2.md §4.2.1 called the sequence itself "the uniqueness guarantee".
+  // It isn't: an identity column is not unique on its own, and anything that
+  // moves the sequence — `ALTER SEQUENCE … RESTART`, a restore, a bad cleanup
+  // script — can re-issue a number that is already taken. That would hand a new
+  // reader an existing reader's public identity, which is exactly the
+  // impersonation case §4.2.4 claims to have deleted. The unique index below is
+  // what actually makes the claim true.
   userNumber: integer('user_number').generatedAlwaysAsIdentity(),
 
   // Better Auth's required core `name` field lives here. It writes "" at signup —
@@ -48,7 +55,9 @@ export const user = pgTable('user', {
   // Gates commenting. Flips only when both names are set; the avatar never
   // affects it.
   profileComplete: boolean('profile_complete').notNull().default(false),
-});
+},
+  (table) => [uniqueIndex('user_user_number_idx').on(table.userNumber)]
+);
 
 export const session = pgTable('session', {
   id: text('id').primaryKey(),

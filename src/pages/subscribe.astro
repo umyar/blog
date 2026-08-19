@@ -7,6 +7,7 @@ export const prerender = false;
 const states = {
   confirmed: {
     title: "You're in",
+    emoji: '\u{1FAE1}\u{1FAE1}\u{1FAE1}',
     body: "You'll get one email whenever a new post goes up. Every one of them has an unsubscribe link at the bottom.",
   },
   unsubscribed: {
@@ -28,6 +29,7 @@ type State = keyof typeof states;
 const raw = Astro.url.searchParams.get('state');
 const state: State = raw && raw in states ? (raw as State) : 'invalid';
 const { title, body } = states[state];
+const emoji = 'emoji' in states[state] ? states[state].emoji : '';
 ---
 
 <BaseLayout title={`${title} — umyar blog`} description="Email subscription status.">
@@ -36,7 +38,9 @@ const { title, body } = states[state];
       <div
         class="rounded-2xl bg-white p-8 shadow-md ring-1 shadow-zinc-800/5 ring-zinc-900/5 dark:border dark:border-zinc-700/50 dark:bg-zinc-800 dark:ring-0"
       >
-        <h1 class="gradient-text text-2xl font-bold tracking-tight">{title}</h1>
+        <h1 class="gradient-text text-2xl font-bold tracking-tight">
+          {title}{emoji && <span class="emoji"> {emoji}</span>}
+        </h1>
         <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{body}</p>
         <a
           href="/"

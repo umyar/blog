@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { canonicalUrl } from './site';
 
 const resend = new Resend(import.meta.env.RESEND_API_KEY);
 
@@ -76,13 +77,13 @@ export async function sendOtpEmail(email: string, otp: string) {
       </p>
       <p style="font-size: 13px; line-height: 1.6; color: #52525b; margin: 0 0 24px;">
         Closed the tab? Enter it at
-        <a href="${import.meta.env.PUBLIC_SITE_URL}/signin" style="color: #4a569d;">blog.umyar.com/signin</a>.
+        <a href="${canonicalUrl}/signin" style="color: #4a569d;">blog.umyar.com/signin</a>.
       </p>
       <p style="font-size: 12px; line-height: 1.6; color: #a1a1aa; margin: 0; border-top: 1px solid #e4e4e7; padding-top: 16px;">
         If you didn't try to sign in, ignore this email — the code is useless on its own and nobody can use it without your inbox.
       </p>
     `),
-    text: `Your sign-in code for umyar — blog is ${otp}\n\nIt expires in 10 minutes. Type it back into the page you left open, or enter it at ${import.meta.env.PUBLIC_SITE_URL}/signin\n\nIf you didn't try to sign in, ignore this email.`,
+    text: `Your sign-in code for umyar — blog is ${otp}\n\nIt expires in 10 minutes. Type it back into the page you left open, or enter it at ${canonicalUrl}/signin\n\nIf you didn't try to sign in, ignore this email.`,
   });
 
   if (error) throw new Error(`Resend: ${error.message}`);

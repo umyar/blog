@@ -213,6 +213,12 @@ body {
 
 /* Likes (COMMENTS_V2.md §8). The heart and the count are separate controls —
    the heart toggles, the count opens the who-liked popover. */
+/* Fixed height so toggling the count never reflows the comment. The count is
+   hidden at zero, and without this the row height depended on whether anyone had
+   liked yet. */
+.comment-like {
+  min-height: 1.25rem;
+}
 .comment-like-btn {
   border: none;
   background: none;
@@ -227,17 +233,23 @@ body {
   color: var(--color-zinc-600);
 }
 .comment-like-btn:hover {
-  color: var(--color-grad-from);
+  color: var(--color-grad-to);
 }
+/* `--color-grad-to` is the brand red (#dc2424); `--color-grad-from` is the
+   indigo. A liked heart wants the red one. */
 .comment-like-btn.is-liked,
 .dark .comment-like-btn.is-liked {
-  color: var(--color-grad-from);
+  color: var(--color-grad-to);
 }
 .comment-like-count {
   border: none;
   background: none;
   padding: 0;
   font-size: 0.75rem;
+  /* Matches the heart's line-height. Left to inherit (1.5) this box was 18px
+     against the heart's 14px, so the row — and every comment below it — grew 4px
+     the moment a like landed. */
+  line-height: 1;
   cursor: pointer;
   color: var(--color-zinc-400);
 }
