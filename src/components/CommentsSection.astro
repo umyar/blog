@@ -237,6 +237,11 @@ const { slug, lang } = Astro.props;
   marginColumn.className = 'hidden lg:block';
   document.body.appendChild(marginColumn);
 
+  // The anchored surfaces below are placed in page coordinates, which only line up
+  // with the page if no ancestor is a containing block — and BaseLayout wraps the
+  // article in a `relative` div. So they move to <body>, like marginColumn above.
+  for (const el of [bubble, hintEl, popover, readEl, likersEl]) document.body.appendChild(el);
+
   // Below this the margin holds bare avatars; at or above it, full cards. The
   // number is not arbitrary — it is where §7.2's measured 320px becomes available.
   const CARD_BREAKPOINT = 1536;
@@ -332,16 +337,19 @@ const { slug, lang } = Astro.props;
     readEl.classList.remove('hidden');
     if (coarsePointer.matches) {
       // A popover pinned to the tap point would sit under the reader's own hand.
+      unanchor(readEl);
       readEl.classList.add('is-sheet');
-      readEl.style.cssText = 'left:0;right:0;bottom:0;top:auto;width:auto;transform:none;';
+      readEl.style.cssText =
+        'position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;transform:none;';
     } else {
       readEl.classList.remove('is-sheet');
       readEl.style.cssText = '';
-      anchorToSelection(readEl, rect, 0);
+      anchorToNode(readEl, rect, false);
     }
   }
 
   function closeReadPopover() {
+    unanchor(readEl);
     readEl.classList.add('hidden');
     readEl.classList.remove('is-sheet');
     readEl.style.cssText = '';
@@ -435,7 +443,7 @@ const { slug, lang } = Astro.props;
 
     likersEl.classList.remove('hidden');
     if (coarsePointer.matches) dock(likersEl, 'bottom');
-    else anchorToSelection(likersEl, rect, 0);
+    else anchorToNode(likersEl, rect, false);
   }
 
   function hideLikers() {
@@ -754,31 +762,82 @@ const { slug, lang } = Astro.props;
   const coarsePointer = window.matchMedia('(pointer: coarse)');
   const EDGE = 8;
   const DOCK = 16;
+  const ANCHOR_GAP = 8;
 
   function clamp(min: number, value: number, max: number) {
     return Math.max(min, Math.min(value, max));
   }
 
+  // Anchored surfaces belong to the passage they were opened on, so they are placed
+  // in page coordinates (`position: absolute` off <body>) rather than viewport ones:
+  // scrolling carries them along with the text instead of leaving them hovering over
+  // whatever has scrolled underneath. The only viewport-dependent part is which side
+  // of the passage they sit on, and reflowAnchored() re-decides that on scroll.
+  type PageRect = { top: number; bottom: number; left: number };
+  const anchored = new Map<HTMLElement, { rect: PageRect; preferAbove: boolean }>();
+
+  function unanchor(el: HTMLElement) {
+    anchored.delete(el);
+  }
+
+  function place(el: HTMLElement, rect: PageRect, preferAbove: boolean) {
+    el.style.position = 'absolute';
+    el.style.transform = '';
+    el.style.bottom = 'auto';
+
+    const above = rect.top - ANCHOR_GAP - el.offsetHeight;
+    const below = rect.bottom + ANCHOR_GAP;
+    const viewTop = window.scrollY + EDGE;
+    const viewBottom = window.scrollY + window.innerHeight - EDGE;
+    // Flip to the other side of the passage only when the preferred side has left the
+    // viewport and the other side is actually on screen — with neither fitting (a
+    // selection taller than the window) the preference stands.
+    let useAbove = preferAbove;
+    if (useAbove && above < viewTop && below + el.offsetHeight <= viewBottom) useAbove = false;
+    if (!useAbove && below + el.offsetHeight > viewBottom && above >= viewTop) useAbove = true;
+    el.style.top = `${useAbove ? above : below}px`;
+
+    const maxLeft = window.scrollX + document.documentElement.clientWidth - el.offsetWidth - EDGE;
+    el.style.left = `${clamp(window.scrollX + EDGE, rect.left, maxLeft)}px`;
+  }
+
+  // `rect` is a viewport rect straight from getBoundingClientRect(); the scroll offset
+  // is folded in once, here, so later scrolling can't drag the element off its node.
+  function anchorToNode(el: HTMLElement, rect: DOMRect, preferAbove: boolean) {
+    const pageRect = {
+      top: rect.top + window.scrollY,
+      bottom: rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX,
+    };
+    anchored.set(el, { rect: pageRect, preferAbove });
+    place(el, pageRect, preferAbove);
+  }
+
+  // Nothing moves here: the surfaces are already in page coordinates. This only re-runs
+  // the above/below flip as their passage approaches an edge of the viewport.
+  function reflowAnchored() {
+    for (const [el, a] of anchored) {
+      if (el.classList.contains('hidden')) continue;
+      place(el, a.rect, a.preferAbove);
+    }
+  }
+  window.addEventListener('scroll', reflowAnchored, { passive: true });
+  window.addEventListener('resize', reflowAnchored);
+
   function dock(el: HTMLElement, edge: 'top' | 'bottom') {
+    unanchor(el);
+    el.style.position = 'fixed';
     el.style.left = '50%';
     el.style.transform = 'translateX(-50%)';
     el.style.top = edge === 'top' ? `calc(env(safe-area-inset-top, 0px) + ${DOCK}px)` : 'auto';
     el.style.bottom = edge === 'bottom' ? `calc(env(safe-area-inset-bottom, 0px) + ${DOCK}px)` : 'auto';
   }
 
-  function anchorToSelection(el: HTMLElement, rect: DOMRect, offsetAbove: number) {
-    el.style.transform = '';
-    el.style.bottom = 'auto';
-    const top = offsetAbove ? rect.top - offsetAbove : rect.bottom + 8;
-    el.style.top = `${clamp(EDGE, top, window.innerHeight - el.offsetHeight - EDGE)}px`;
-    el.style.left = `${clamp(EDGE, rect.left, window.innerWidth - el.offsetWidth - EDGE)}px`;
-  }
-
   // Bubble and hint are on screen while the native menu is, so on touch they go to
   // whichever edge the selection is furthest from.
   function positionSelectionUi(el: HTMLElement, rect: DOMRect) {
     if (coarsePointer.matches) dock(el, rect.bottom > window.innerHeight * 0.6 ? 'top' : 'bottom');
-    else anchorToSelection(el, rect, 40);
+    else anchorToNode(el, rect, true);
   }
 
   // Composer: on touch it docks to the top edge, since focusing the textarea raises the
@@ -786,7 +845,7 @@ const { slug, lang } = Astro.props;
   // against the layout viewport, which the keyboard doesn't shrink.
   function positionComposer(el: HTMLElement, rect: DOMRect) {
     if (coarsePointer.matches) dock(el, 'top');
-    else anchorToSelection(el, rect, 0);
+    else anchorToNode(el, rect, false);
   }
 
   function handleSelectionChange() {
@@ -840,6 +899,7 @@ const { slug, lang } = Astro.props;
   }
 
   function closePopover() {
+    unanchor(popover);
     popover.classList.add('hidden');
     activeCapture = null;
     activeRange = null;
